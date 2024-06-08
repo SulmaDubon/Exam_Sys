@@ -32,9 +32,9 @@ INSTALLED_APPS = [
 
     'core', 
     'users',
-    'exams',
+    'dashboard_users',
     'admin_panel',
-    'results'
+   
     
     
 ]

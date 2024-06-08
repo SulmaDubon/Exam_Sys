@@ -1,7 +1,6 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
@@ -13,51 +12,8 @@ import random
 import string
 import logging
 
+# Configurar el logger
 logger = logging.getLogger(__name__)
-
-def home(request):
-    return render(request, 'home.html')
-
-@csrf_protect
-def user_login(request):
-    if request.method == 'POST':
-        form = CustomAuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                return redirect('dashboard')
-            else:
-                messages.error(request, 'Nombre de usuario o contraseña incorrectos.')
-                logger.warning(f"Autenticación fallida para el usuario: {username}")
-        else:
-            messages.error(request, 'Hubo un error con el formulario. Por favor, revisa los datos ingresados.')
-            logger.warning(f"Formulario de login no válido: {form.errors}")
-    else:
-        form = CustomAuthenticationForm()
-    return render(request, 'user/login.html', {'form': form})
-
-@login_required
-def dashboard(request):
-    return render(request, 'dashboard.html')
-
-@login_required
-def inscripcion(request):
-    return render(request, 'inscripcion.html')
-
-@login_required
-def examen(request):
-    return render(request, 'examen.html')
-
-@login_required
-def resultados(request):
-    return render(request, 'resultados.html')
-
-@login_required
-def cambiar_contrasena(request):
-    return render(request, 'cambiar_contrasena.html')
 
 def generate_username(first_name, last_name):
     base_username = f"{first_name.lower()}{last_name.lower()}"
@@ -67,6 +23,10 @@ def generate_username(first_name, last_name):
         username = f"{base_username}{counter}"
         counter += 1
     return username
+
+def generate_password(length=8):
+    """Genera una contraseña aleatoria."""
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 class UserRegistrationView(View):
     def get(self, request):
@@ -78,7 +38,7 @@ class UserRegistrationView(View):
         if form.is_valid():
             user = form.save(commit=False)
             user.username = generate_username(user.first_name, user.last_name)
-            password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+            password = generate_password()
             user.set_password(password)
             try:
                 user.save()
@@ -115,7 +75,7 @@ class UserLoginView(View):
             if user is not None:
                 login(request, user)
                 messages.success(request, 'Inicio de sesión exitoso.')
-                return redirect('dashboard')
+                return redirect('dashboard_users:dashboard')
             else:
                 logger.warning(f"Autenticación fallida para el usuario: {username}")
                 messages.error(request, 'Nombre de usuario o contraseña incorrectos.')
@@ -123,4 +83,3 @@ class UserLoginView(View):
             logger.warning(f"Formulario no válido: {form.errors}")
             messages.error(request, 'Nombre de usuario o contraseña incorrectos.')
         return render(request, 'user/login.html', {'form': form})
-

@@ -1,26 +1,19 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión</title>
 </head>
 <body>
     <h1>Iniciar Sesión</h1>
-    {% if messages %}
-        <ul>
-            {% for message in messages %}
-                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
-    <form method="post" action="{% url 'login' %}">
+    <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Iniciar Sesión</button>
+        <button type="submit">Iniciar sesión</button>
     </form>
+    <a href="{% url 'register' %}">Registrarse</a>
 </body>
 </html>
+
 
 
 

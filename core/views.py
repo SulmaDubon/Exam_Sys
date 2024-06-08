@@ -5,3 +5,5 @@ class Homeview(View):
     def get(self, request, *args, **kwargs):
         context = {}
         return render(request, 'home.html', context)
+
+

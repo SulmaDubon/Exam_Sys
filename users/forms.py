@@ -1,22 +1,9 @@
 # users/forms.py
 
 from django import forms
-from .models import CustomUser
+from .models import CustomUser, MEXICAN_STATES
 from django.contrib.auth.forms import AuthenticationForm
 from django.utils.translation import gettext_lazy as _
-
-
-MEXICAN_STATES = [
-    ('AG', 'Aguascalientes'), ('BC', 'Baja California'), ('BS', 'Baja California Sur'),
-    ('CM', 'Campeche'), ('CS', 'Chiapas'), ('CH', 'Chihuahua'), ('CO', 'Coahuila'),
-    ('CL', 'Colima'), ('DF', 'Ciudad de México'), ('DG', 'Durango'), ('GT', 'Guanajuato'),
-    ('GR', 'Guerrero'), ('HG', 'Hidalgo'), ('JA', 'Jalisco'), ('EM', 'Estado de México'),
-    ('MI', 'Michoacán'), ('MO', 'Morelos'), ('NA', 'Nayarit'), ('NL', 'Nuevo León'),
-    ('OA', 'Oaxaca'), ('PU', 'Puebla'), ('QT', 'Querétaro'), ('QR', 'Quintana Roo'),
-    ('SL', 'San Luis Potosí'), ('SI', 'Sinaloa'), ('SO', 'Sonora'), ('TB', 'Tabasco'),
-    ('TM', 'Tamaulipas'), ('TL', 'Tlaxcala'), ('VE', 'Veracruz'), ('YU', 'Yucatán'),
-    ('ZA', 'Zacatecas')
-]
 
 class UserRegistrationForm(forms.ModelForm):
     class Meta:

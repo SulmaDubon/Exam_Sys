@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from django.views import View
-from dashboard_users.models import Examen, UserExam
+from dashboard_users.models import Examen
 from users.models import CustomUser
 from .forms import FormularioUsuario, FormularioExamen
 

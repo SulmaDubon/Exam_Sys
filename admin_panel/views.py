@@ -9,11 +9,20 @@ from users.models import CustomUser
 from .models import Examen
 from admin_panel.forms import ExamenForm   # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.decorators import user_passes_test
 
 
 # Función para verificar si el usuario es administrador
 def es_admin(usuario):
     return usuario.is_superuser
+
+#@method_decorator(user_passes_test(es_admin), name='dispatch')
+class AdminLoginView(LoginView):
+    template_name = 'admin_panel/admin_login.html'
+
+    def get_success_url(self):
+        return reverse_lazy('admin_panel:admin_panel')
 
 # Vista principal del panel de administración
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')

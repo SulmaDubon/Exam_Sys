@@ -2,6 +2,7 @@
 
 from django.urls import path
 from .views import (
+    AdminLoginView,
     VistaAdminPanel,
     ListaUsuarios,
     CrearUsuario,
@@ -16,6 +17,7 @@ from .views import (
 app_name = 'admin_panel'
 
 urlpatterns = [
+    path('login/', AdminLoginView.as_view(), name='admin_login'),  # URL de inicio de sesión para administradores
     path('', VistaAdminPanel.as_view(), name='admin_panel'),
     path('usuarios/', ListaUsuarios.as_view(), name='lista_usuarios'),
     path('usuarios/crear/', CrearUsuario.as_view(), name='crear_usuario'),
@@ -26,3 +28,4 @@ urlpatterns = [
     path('examenes/editar/<int:pk>/', EditarExamen.as_view(), name='editar_examen'),
     path('examenes/eliminar/<int:pk>/', EliminarExamen.as_view(), name='eliminar_examen'),
 ]
+

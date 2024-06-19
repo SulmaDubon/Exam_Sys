@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.views import View
+from django.views.generic import ListView
 from django.contrib.auth import authenticate, login
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
@@ -28,10 +28,10 @@ def generate_password(length=8):
     """Genera una contraseña aleatoria."""
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
-class UserRegistrationView(View):
+class UserRegistrationView(ListView):
     def get(self, request):
         form = UserRegistrationForm()
-        return render(request, 'register.html', {'form': form})
+        return render(request, 'user/register.html', {'form': form})
 
     def post(self, request):
         form = UserRegistrationForm(request.POST)
@@ -57,10 +57,10 @@ class UserRegistrationView(View):
         else:
             messages.error(request, 'Hubo un error con el formulario. Por favor, revisa los datos ingresados.')
             logger.warning(f"Formulario de registro no válido: {form.errors}")
-        return render(request, 'register.html', {'form': form})
+        return render(request, 'user/register.html', {'form': form})
 
 @method_decorator(csrf_protect, name='dispatch')
-class UserLoginView(View):
+class UserLoginView(ListView):
     def get(self, request):
         form = CustomAuthenticationForm()
         return render(request, 'user/login.html', {'form': form})

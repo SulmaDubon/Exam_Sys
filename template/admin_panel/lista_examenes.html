@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Lista de Exámenes{% endblock %}
+{% block content %}
+<h1>Lista de Exámenes</h1>
+<a href="{% url 'admin_panel:crear_examen' %}">Crear Nuevo Examen</a>
+<ul>
+    {% for examen in examenes %}
+    <li>{{ examen.nombre }} - <a href="{% url 'admin_panel:editar_examen' examen.id %}">Editar</a> - <a href="{% url 'admin_panel:eliminar_examen' examen.id %}">Eliminar</a></li>
+    {% endfor %}
+</ul>
+{% endblock %}

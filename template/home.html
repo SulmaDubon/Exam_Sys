@@ -4,8 +4,9 @@
     <title>Home</title>
 </head>
 <body>
-    <h1>Pagina de inicio</h1>
-    <a href="{% url 'register' %}">Register</a>
-    <a href="{% url 'login' %}">Login</a>
+    <h1>Página de inicio</h1>
+    <a href="{% url 'users:register' %}">Registrarse</a>
+    <a href="{% url 'users:login' %}">Iniciar sesión</a>
+    <a href="{% url 'admin_panel:admin_panel' %}">Panel de Administración</a> <!-- Enlace al panel de administración -->
 </body>
 </html>

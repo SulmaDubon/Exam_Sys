@@ -10,6 +10,9 @@
         {{ form.as_p }}
         <button type="submit">Registrarse</button>
     </form>
-    <a href="{% url 'login' %}">Iniciar sesión</a>
+    <a href="{% url 'users:login' %}">Iniciar sesión</a>
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
 </body>
 </html>

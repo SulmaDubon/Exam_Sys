@@ -11,3 +11,4 @@ urlpatterns = [
     path('admin_panel/', include('admin_panel.urls')),  # Incluye URLs de la app admin_panel
     path('', Homeview.as_view(), name="home"),  # Vista de inicio
 ]
+ 

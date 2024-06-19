@@ -5,10 +5,10 @@ from django.urls import path, include
 from .views import Homeview
 
 urlpatterns = [
-    path('admin/', admin.site.urls),  # URLs del sitio de administración
-    path('dashboard_users/', include('dashboard_users.urls')),  # Incluye URLs de la app dashboard_users
-    path('users/', include('users.urls')),  # Incluye URLs de la app users
-    path('admin_panel/', include('admin_panel.urls')),  # Incluye URLs de la app admin_panel
+     path('admin/', admin.site.urls),
+    path('users/', include('users.urls', namespace='users')),  # URLs del usuario
+    path('admin_panel/', include('admin_panel.urls', namespace='admin_panel')),  # URLs del panel de administración
+    path('dashboard/', include('dashboard_users.urls', namespace='dashboard_users')),  # Incluye las URLs del dashboard
     path('', Homeview.as_view(), name="home"),  # Vista de inicio
 ]
  

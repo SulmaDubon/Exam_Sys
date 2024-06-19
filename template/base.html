@@ -1,27 +1,15 @@
-<!-- templates/base.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Mi Aplicación{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <title>{% block title %}Mi Sitio{% endblock %}</title>
+    {% block head %}
+    <!-- Aquí puedes incluir estilos y scripts comunes -->
+    {% endblock %}
 </head>
 <body>
-    <header>
-        <nav>
-            <ul>
-                <li><a href="{% url 'home' %}">Inicio</a></li>
-                <li><a href="{% url 'admin_panel:admin_dashboard' %}">Admin Dashboard</a></li>
-                <li><a href="{% url 'logout' %}">Logout</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        {% block content %}{% endblock %}
-    </main>
-    <footer>
-        <p>&copy; 2024 Mi Aplicación</p>
-    </footer>
+    {% block content %}
+    <!-- Aquí va el contenido específico de cada plantilla -->
+    {% endblock %}
 </body>
 </html>
+

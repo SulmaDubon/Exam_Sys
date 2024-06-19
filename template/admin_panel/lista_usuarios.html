@@ -1,11 +1,84 @@
-{% extends "base.html" %}
-{% block title %}Lista de Usuarios{% endblock %}
-{% block content %}
-<h1>Lista de Usuarios</h1>
-<a href="{% url 'admin_panel:crear_usuario' %}">Crear Nuevo Usuario</a>
-<ul>
-    {% for usuario in usuarios %}
-    <li>{{ usuario.username }} - <a href="{% url 'admin_panel:editar_usuario' usuario.id %}">Editar</a> - <a href="{% url 'admin_panel:eliminar_usuario' usuario.id %}">Eliminar</a></li>
-    {% endfor %}
-</ul>
-{% endblock %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gestionar Usuarios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: #fff;
+        }
+        a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .actions {
+            display: flex;
+            justify-content: space-around;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 0;
+            background-color: #007bff;
+            color: #fff;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gestionar Usuarios</h1>
+    <div class="actions">
+        <a href="{% url 'admin_panel:crear_usuario' %}" class="button">Crear Usuario</a>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre de Usuario</th>
+                <th>Email</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in usuarios %}
+            <tr>
+                <td>{{ usuario.id }}</td>
+                <td>{{ usuario.username }}</td>
+                <td>{{ usuario.email }}</td>
+                <td>
+                    <a href="{% url 'admin_panel:editar_usuario' usuario.id %}">Editar</a>
+                    <a href="{% url 'admin_panel:eliminar_usuario' usuario.id %}">Eliminar</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

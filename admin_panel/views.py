@@ -17,7 +17,7 @@ from django.contrib.auth.decorators import user_passes_test
 def es_admin(usuario):
     return usuario.is_superuser
 
-#@method_decorator(user_passes_test(es_admin), name='dispatch')
+@method_decorator(user_passes_test(es_admin), name='dispatch')
 class AdminLoginView(LoginView):
     template_name = 'admin_panel/admin_login.html'
 

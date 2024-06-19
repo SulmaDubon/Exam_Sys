@@ -1,22 +1,36 @@
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
+# dashboard_users/views.py
 
-@login_required
-def dashboard(request):
-    return render(request, 'dashboard.html')
+from django.shortcuts import render, redirect
+from django.views import View
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from .models import Examen
+from .forms import CambiarContrasenaForm
 
-@login_required
-def inscripcion(request):
-    return render(request, 'inscripcion.html')
+class VistaDashboard(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard_users/dashboard.html'
 
-@login_required
-def examen(request):
-    return render(request, 'examen.html')
+class CambiarContrasena(LoginRequiredMixin, View):
+    form_class = CambiarContrasenaForm
+    template_name = 'dashboard_users/cambiar_contrasena.html'
 
-@login_required
-def resultados(request):
-    return render(request, 'resultados.html')
+    def get(self, request):
+        form = self.form_class(user=request.user)
+        return render(request, self.template_name, {'form': form})
 
-@login_required
-def cambiar_contrasena(request):
-    return render(request, 'cambiar_contrasena.html')
+    def post(self, request):
+        form = self.form_class(data=request.POST, user=request.user)
+        if form.is_valid():
+            form.save()
+            # Redirigir a alguna página de éxito o mostrar un mensaje
+            return redirect('dashboard_users:dashboard')
+        return render(request, self.template_name, {'form': form})
+
+class VistaExamen(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard_users/examen.html'
+
+class InscripcionExamen(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard_users/inscripcion.html'
+
+class ResultadosExamen(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard_users/resultados.html'

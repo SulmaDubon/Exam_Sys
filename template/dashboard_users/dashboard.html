@@ -1,19 +1,16 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-</head>
-<body>
-    <h1>Bienvenido al Dashboard</h1>
-    <nav>
-        <ul>
-            <li><a href="{% url 'dashboard_users:inscripcion' %}">Inscripción</a></li>
-            <li><a href="{% url 'dashboard_users:examen' %}">Examen</a></li>
-            <li><a href="{% url 'dashboard_users:resultados' %}">Resultados</a></li>
-            <li><a href="{% url 'dashboard_users:cambiar_contrasena' %}">Cambiar Contraseña</a></li>
-        </ul>
-    </nav>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1>Bienvenido al Dashboard</h1>
+<nav>
+    <ul>
+        <li><a href="{% url 'dashboard_users:inscripcion' %}">Inscripción</a></li>
+        <li><a href="{% url 'dashboard_users:examen' %}">Examen</a></li>
+        <li><a href="{% url 'dashboard_users:resultados' %}">Resultados</a></li>
+        <li><a href="{% url 'dashboard_users:cambiar_contrasena' %}">Cambiar Contraseña</a></li>
+    </ul>
+</nav>
+{% endblock %}
+

@@ -8,6 +8,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .forms import UserRegistrationForm, CustomAuthenticationForm
 from .models import CustomUser
+from django.views.generic.edit import FormView
 import random
 import string
 import logging
@@ -28,36 +29,38 @@ def generate_password(length=8):
     """Genera una contraseña aleatoria."""
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
-class UserRegistrationView(ListView):
-    def get(self, request):
-        form = UserRegistrationForm()
-        return render(request, 'user/register.html', {'form': form})
+class UserRegistrationView(FormView):
+    template_name = 'user/register.html'
+    form_class = UserRegistrationForm
+    success_url = '/'  # Cambia esto a la URL de tu página de inicio
 
-    def post(self, request):
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            user.username = generate_username(user.first_name, user.last_name)
-            password = generate_password()
-            user.set_password(password)
-            try:
-                user.save()
-                send_mail(
-                    'Tus credenciales',
-                    f'Nombre de usuario: {user.username}\nContraseña: {password}',
-                    settings.EMAIL_HOST_USER,
-                    [user.email],
-                    fail_silently=False,
-                )
-                messages.success(request, 'Usuario creado exitosamente. Revisa tu correo electrónico para las credenciales.')
-                return redirect('login')
-            except Exception as e:
-                logger.error(f'Error al crear el usuario: {str(e)}')
-                messages.error(request, 'Error al crear el usuario. Por favor, inténtelo de nuevo.')
-        else:
-            messages.error(request, 'Hubo un error con el formulario. Por favor, revisa los datos ingresados.')
-            logger.warning(f"Formulario de registro no válido: {form.errors}")
-        return render(request, 'user/register.html', {'form': form})
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.username = generate_username(user.first_name, user.last_name)
+        password = generate_password()
+        user.set_password(password)
+        try:
+            user.save()
+            send_mail(
+                'Tus credenciales',
+                f'Nombre de usuario: {user.username}\nContraseña: {password}',
+                settings.EMAIL_HOST_USER,
+                [user.email],
+                fail_silently=False,
+            )
+            messages.success(self.request, 'Usuario creado exitosamente. Revisa tu correo electrónico para las credenciales.')
+            return redirect(self.get_success_url())
+        except Exception as e:
+            logger.error(f'Error al crear el usuario: {str(e)}')
+            messages.error(self.request, 'Error al crear el usuario. Por favor, inténtelo de nuevo.')
+            return self.render_to_response(self.get_context_data(form=form))
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Hubo un error con el formulario. Por favor, revisa los datos ingresados.')
+        logger.warning(f"Formulario de registro no válido: {form.errors}")
+        return self.render_to_response(self.get_context_data(form=form))
+
+
 
 @method_decorator(csrf_protect, name='dispatch')
 class UserLoginView(ListView):

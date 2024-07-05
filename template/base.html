@@ -1,27 +1,48 @@
-<!-- templates/base.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Mi Aplicación{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <title>{% block title %}Mi Sitio{% endblock %}</title>
+    {% block head %}
+    <!-- Estilos y scripts adicionales específicos de cada plantilla -->
+    {% endblock %}
 </head>
 <body>
     <header>
         <nav>
+            <!-- Navegación común -->
             <ul>
                 <li><a href="{% url 'home' %}">Inicio</a></li>
-                <li><a href="{% url 'admin_panel:admin_dashboard' %}">Admin Dashboard</a></li>
-                <li><a href="{% url 'logout' %}">Logout</a></li>
+                <li><a href="{% url 'about' %}">Acerca de</a></li>
+                <li><a href="{% url 'contact' %}">Contacto</a></li>
+                
             </ul>
         </nav>
     </header>
+    
     <main>
-        {% block content %}{% endblock %}
+        <!-- Mensajes del sistema -->
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        
+        {% block content %}
+        <!-- Aquí va el contenido específico de cada plantilla -->
+        {% endblock %}
     </main>
+
     <footer>
-        <p>&copy; 2024 Mi Aplicación</p>
+        <p>&copy; 2024 Mi Sitio. Todos los derechos reservados.</p>
     </footer>
+
+    {% block scripts %}
+    <!-- Scripts adicionales específicos de cada plantilla -->
+    {% endblock %}
 </body>
 </html>
+

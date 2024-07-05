@@ -18,7 +18,7 @@ app_name = 'admin_panel'
 
 urlpatterns = [
     path('login/', AdminLoginView.as_view(), name='admin_login'),  # URL de inicio de sesión para administradores
-    path('', VistaAdminPanel.as_view(), name='admin_panel'),
+    path('', VistaAdminPanel.as_view(), name='admin_panel'),  # URL principal del panel de administración
     path('usuarios/', ListaUsuarios.as_view(), name='lista_usuarios'),
     path('usuarios/crear/', CrearUsuario.as_view(), name='crear_usuario'),
     path('usuarios/editar/<int:pk>/', EditarUsuario.as_view(), name='editar_usuario'),

@@ -1,11 +1,69 @@
-{% extends "base.html" %}
-{% block title %}Lista de Exámenes{% endblock %}
-{% block content %}
-<h1>Lista de Exámenes</h1>
-<a href="{% url 'admin_panel:crear_examen' %}">Crear Nuevo Examen</a>
-<ul>
-    {% for examen in examenes %}
-    <li>{{ examen.nombre }} - <a href="{% url 'admin_panel:editar_examen' examen.id %}">Editar</a> - <a href="{% url 'admin_panel:eliminar_examen' examen.id %}">Eliminar</a></li>
-    {% endfor %}
-</ul>
-{% endblock %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gestionar Exámenes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        a {
+            text-decoration: none;
+            color: #fff;
+            background-color: #007bff;
+            padding: 10px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        a:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gestionar Exámenes</h1>
+    <a href="{% url 'admin_panel:crear_examen' %}">Crear Examen</a>
+    <table>
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for examen in examenes %}
+            <tr>
+                <td>{{ examen.titulo }}</td>
+                <td>{{ examen.fecha }}</td>
+                <td>
+                    <a href="{% url 'admin_panel:editar_examen' examen.pk %}">Editar</a>
+                    <a href="{% url 'admin_panel:eliminar_examen' examen.pk %}">Eliminar</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -6,12 +6,11 @@ from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from users.models import CustomUser
-from .models import Examen
-from admin_panel.forms import ExamenForm   # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.models import Examen
+from dashboard_users.forms import ExamenForm   # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
-from django.contrib.auth.decorators import user_passes_test
-
+from django.contrib import messages 
 
 # Función para verificar si el usuario es administrador
 def es_admin(usuario):
@@ -48,14 +47,23 @@ class CrearUsuario(CreateView):
     success_url = reverse_lazy('admin_panel:lista_usuarios')
     # Renderiza el formulario para crear un usuario y maneja su creación
 
-# Vista para editar un usuario existente
+
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class EditarUsuario(UpdateView):
     model = CustomUser
     form_class = UserRegistrationForm
     template_name = 'admin_panel/formulario_usuario.html'
     success_url = reverse_lazy('admin_panel:lista_usuarios')
-    # Renderiza el formulario para editar un usuario y maneja su actualización
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Usuario actualizado exitosamente.')
+        return response
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Hubo un error al actualizar el usuario. Por favor, revisa los datos ingresados.')
+        return super().form_invalid(form)
+
 
 # Vista para eliminar un usuario existente
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')

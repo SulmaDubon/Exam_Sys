@@ -6,11 +6,10 @@ from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from users.models import CustomUser
-from .models import Examen
-from admin_panel.forms import ExamenForm   # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.models import Examen
+from dashboard_users.forms import ExamenForm   # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
-from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages 
 
 # Función para verificar si el usuario es administrador

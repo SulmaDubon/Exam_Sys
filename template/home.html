@@ -1,45 +1,46 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Home</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        h1 {
-            color: #333;
-        }
-        nav {
-            margin: 20px 0;
-        }
-        a {
-            text-decoration: none;
-            color: #fff;
-            background-color: #007bff;
-            padding: 10px 20px;
-            margin: 0 10px;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
-        }
-        a:hover {
-            background-color: #0056b3;
-        }
-    </style>
-</head>
-<body>
-    <h1>Página de inicio</h1>
-    <nav>
-        <a href="{% url 'users:register' %}">Registrarse</a>
-        <a href="{% url 'users:login' %}">Iniciar sesión</a>
-        <a href="{% url 'admin_panel:admin_login' %}">Administrador</a>
-    </nav>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block head %}
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+    }
+    h1 {
+        color: #333;
+    }
+    nav {
+        margin: 20px 0;
+    }
+    a {
+        text-decoration: none;
+        color: #fff;
+        background-color: #007bff;
+        padding: 10px 20px;
+        margin: 0 10px;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
+    a:hover {
+        background-color: #0056b3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Página de inicio</h1>
+<nav>
+    <a href="{% url 'users:register' %}">Registrarse</a>
+    <a href="{% url 'users:login' %}">Iniciar sesión</a>
+    <a href="{% url 'admin_panel:admin_login' %}">Administrador</a>
+</nav>
+{% endblock %}

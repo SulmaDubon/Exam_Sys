@@ -1,10 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Inscripción</title>
-</head>
-<body>
-    <h1>Inscripción</h1>
-    <!-- Contenido de la inscripción -->
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Inscribirse a un Examen</h2>
+<form method="post">
+    {% csrf_token %}
+    <label for="examen_id">Seleccione un examen:</label>
+    <select name="examen_id" id="examen_id">
+        {% for examen in examenes %}
+        <option value="{{ examen.id }}">{{ examen.nombre }} - {{ examen.fecha }} - {{ examen.hora }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Inscribirse</button>
+</form>
+{% endblock %}

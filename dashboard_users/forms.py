@@ -6,7 +6,7 @@ from .models import Examen
 class ExamenForm(forms.ModelForm):
     class Meta:
         model = Examen
-        fields = ['nombre', 'fecha', 'hora', 'usuarios']
+        fields = ['nombre', 'fecha', 'hora']
         widgets = {
             'fecha': forms.DateInput(attrs={'type': 'date'}),
             'hora': forms.TimeInput(attrs={'type': 'time'}),
@@ -15,7 +15,7 @@ class ExamenForm(forms.ModelForm):
             'nombre': 'Nombre del Examen',
             'fecha': 'Fecha del Examen',
             'hora': 'Hora del Examen',
-            'usuarios': 'Usuarios Inscritos'
+            
         }
 
 

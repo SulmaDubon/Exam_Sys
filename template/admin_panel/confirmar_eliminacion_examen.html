@@ -1,37 +1,13 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Confirmar Eliminación</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 {
-            color: #333;
-        }
-        form {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-    </style>
-</head>
-<body>
-    <h1>Confirmar Eliminación</h1>
-   
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Eliminación{% endblock %}
+
+{% block content %}
+<h2>¿Estás seguro de que deseas eliminar este examen?</h2>
+<p>{{ object.nombre }} - {{ object.fecha }} - {{ object.hora }}</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Sí, eliminar</button>
+    <a href="{% url 'admin_panel:lista_examenes' %}">Cancelar</a>
+</form>
+{% endblock %}

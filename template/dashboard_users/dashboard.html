@@ -4,6 +4,34 @@
 
 {% block content %}
 <h1>Bienvenido al Dashboard</h1>
+
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<div>
+    <h2>Información del Usuario</h2>
+    <p><strong>Nombre:</strong> {{ usuario.get_full_name }}</p>
+    <p><strong>Correo Electrónico:</strong> {{ usuario.email }}</p>
+</div>
+
+<div>
+    <h2>Exámenes Inscritos</h2>
+    {% if examenes_inscritos %}
+        <ul>
+        {% for examen in examenes_inscritos %}
+            <li>{{ examen.nombre }} - {{ examen.fecha }} - {{ examen.hora }}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No estás inscrito en ningún examen.</p>
+    {% endif %}
+</div>
+
 <nav>
     <ul>
         <li><a href="{% url 'dashboard_users:inscripcion' %}">Inscripción</a></li>
@@ -13,4 +41,3 @@
     </ul>
 </nav>
 {% endblock %}
-

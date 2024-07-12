@@ -17,6 +17,7 @@ class Examen(models.Model):
 class InscripcionExamen(models.Model):
     usuario = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     examen = models.ForeignKey(Examen, on_delete=models.CASCADE)
+    fecha_inscripcion = models.DateTimeField(auto_now_add=True)
     resultado = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):

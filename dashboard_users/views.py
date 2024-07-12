@@ -10,11 +10,23 @@ from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
 from .models import Examen
 from .forms import ExamenForm
+from django.contrib import messages
+from django.utils import timezone
 
 from .forms import CambiarContrasenaForm
 
 class VistaDashboard(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        ahora = timezone.now()
+        context['usuario'] = user
+        context['examenes_inscritos'] = Examen.objects.filter(inscripcionexamen__usuario=user, fecha__gte=ahora.date()).exclude(fecha=ahora.date(), hora__lte=ahora.time())
+        return context
+
+
 
 class CambiarContrasena(LoginRequiredMixin, View):
     form_class = CambiarContrasenaForm
@@ -35,6 +47,7 @@ class CambiarContrasena(LoginRequiredMixin, View):
 class VistaExamen(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/examen.html'
 
+
 class InscripcionExamen(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/inscripcion.html'
 
@@ -48,7 +61,8 @@ class InscripcionExamen(LoginRequiredMixin, TemplateView):
         examen = get_object_or_404(Examen, id=examen_id)
         examen.usuarios.add(request.user)
         examen.save()
-        return HttpResponseRedirect(reverse('dashboard_users:inscripcion_exitosa'))
+        messages.success(request, 'Te has inscrito exitosamente al examen.')
+        return HttpResponseRedirect(reverse('dashboard_users:dashboard'))
 
 
 

@@ -11,14 +11,15 @@ from .views import (
     ListaExamenes,
     CrearExamen,
     EditarExamen,
-    EliminarExamen
+    EliminarExamen,
+    UsuariosInscritosView
 )
 
 app_name = 'admin_panel'
 
 urlpatterns = [
-    path('login/', AdminLoginView.as_view(), name='admin_login'),  # URL de inicio de sesión para administradores
-    path('', VistaAdminPanel.as_view(), name='admin_panel'),  # URL principal del panel de administración
+    path('login/', AdminLoginView.as_view(), name='admin_login'),
+    path('', VistaAdminPanel.as_view(), name='admin_panel'),
     path('usuarios/', ListaUsuarios.as_view(), name='lista_usuarios'),
     path('usuarios/crear/', CrearUsuario.as_view(), name='crear_usuario'),
     path('usuarios/editar/<int:pk>/', EditarUsuario.as_view(), name='editar_usuario'),
@@ -27,5 +28,5 @@ urlpatterns = [
     path('examenes/crear/', CrearExamen.as_view(), name='crear_examen'),
     path('examenes/editar/<int:pk>/', EditarExamen.as_view(), name='editar_examen'),
     path('examenes/eliminar/<int:pk>/', EliminarExamen.as_view(), name='eliminar_examen'),
+    path('examenes/usuarios-inscritos/<int:pk>/', UsuariosInscritosView.as_view(), name='usuarios_inscritos'),
 ]
-

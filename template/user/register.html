@@ -3,21 +3,16 @@
 {% block title %}Registro de Usuario{% endblock %}
 
 {% block content %}
-<h1>Registro de Usuario</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Registrarse</button>
-</form>
-<a href="{% url 'users:login' %}">Iniciar sesión</a> <!-- Aquí se corrige el namespace -->
-
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
+<div class="form-container">
+    <h1>Registro de Usuario</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn">Registrarse</button>
+    </form>
+    <a href="{% url 'users:login' %}" class="btn-link">Iniciar sesión</a>
+</div>
 {% endblock %}
+
 
 

@@ -1,10 +1,80 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Examen</title>
+    <title>Examen de 100 Preguntas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #007bff;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        .pregunta {
+            margin-bottom: 20px;
+        }
+        .pregunta h3 {
+            margin-bottom: 10px;
+        }
+        .respuesta {
+            margin-bottom: 10px;
+        }
+        .respuesta input {
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
-    <h1>Examen</h1>
-    <!-- Contenido del examen -->
+    <div class="container">
+        <h1>Examen de 100 Preguntas</h1>
+        <form method="post" action="{% url 'dashboard_users:submit_examen' %}">
+            {% csrf_token %}
+            {% for pregunta in preguntas %}
+            <div class="pregunta">
+                <h3>{{ forloop.counter }}. {{ pregunta.texto }}</h3>
+                <div class="respuesta">
+                    <input type="radio" name="pregunta_{{ pregunta.id }}" value="{{ pregunta.respuesta1 }}" id="pregunta_{{ pregunta.id }}_1">
+                    <label for="pregunta_{{ pregunta.id }}_1">{{ pregunta.respuesta1 }}</label>
+                </div>
+                <div class="respuesta">
+                    <input type="radio" name="pregunta_{{ pregunta.id }}" value="{{ pregunta.respuesta2 }}" id="pregunta_{{ pregunta.id }}_2">
+                    <label for="pregunta_{{ pregunta.id }}_2">{{ pregunta.respuesta2 }}</label>
+                </div>
+                <div class="respuesta">
+                    <input type="radio" name="pregunta_{{ pregunta.id }}" value="{{ pregunta.respuesta3 }}" id="pregunta_{{ pregunta.id }}_3">
+                    <label for="pregunta_{{ pregunta.id }}_3">{{ pregunta.respuesta3 }}</label>
+                </div>
+                <div class="respuesta">
+                    <input type="radio" name="pregunta_{{ pregunta.id }}" value="{{ pregunta.respuesta4 }}" id="pregunta_{{ pregunta.id }}_4">
+                    <label for="pregunta_{{ pregunta.id }}_4">{{ pregunta.respuesta4 }}</label>
+                </div>
+            </div>
+            {% endfor %}
+            <button type="submit">Enviar Examen</button>
+        </form>
+    </div>
 </body>
 </html>

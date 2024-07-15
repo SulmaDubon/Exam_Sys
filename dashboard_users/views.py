@@ -8,12 +8,17 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
-from .models import Examen
+from .models import Examen, Pregunta
 from .forms import ExamenForm
 from django.contrib import messages
 from django.utils import timezone
+import random
 
 from .forms import CambiarContrasenaForm
+
+#------------------------------
+#   DASHBOARD
+#-------------------------------
 
 class VistaDashboard(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/dashboard.html'
@@ -26,7 +31,9 @@ class VistaDashboard(LoginRequiredMixin, TemplateView):
         context['examenes_inscritos'] = Examen.objects.filter(inscripcionexamen__usuario=user, fecha__gte=ahora.date()).exclude(fecha=ahora.date(), hora__lte=ahora.time())
         return context
 
-
+#----------------------------------
+#   CONTRASEÑA
+#-----------------------------------
 
 class CambiarContrasena(LoginRequiredMixin, View):
     form_class = CambiarContrasenaForm
@@ -44,9 +51,41 @@ class CambiarContrasena(LoginRequiredMixin, View):
             return redirect('dashboard_users:dashboard')
         return render(request, self.template_name, {'form': form})
 
-class VistaExamen(LoginRequiredMixin, TemplateView):
+#----------------------------------------
+#   EXAMEN
+#-----------------------------------------
+
+class GenerarExamenView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/examen.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        todas_las_preguntas = list(Pregunta.objects.all())
+        preguntas_seleccionadas = random.sample(todas_las_preguntas, min(len(todas_las_preguntas), 100))
+        context['preguntas'] = preguntas_seleccionadas
+        return context
+
+class SubmitExamenView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        puntaje = 0
+        total_preguntas = 0
+        for key, value in request.POST.items():
+            if key.startswith('pregunta_'):
+                pregunta_id = int(key.split('_')[1])
+                respuesta_seleccionada = value
+                pregunta = Pregunta.objects.get(id=pregunta_id)
+                if respuesta_seleccionada == pregunta.respuesta_correcta:
+                    puntaje += 1
+                total_preguntas += 1
+        
+        resultado = f"Puntaje: {puntaje}/{total_preguntas}"
+        messages.success(request, resultado)
+        return redirect('dashboard_users:resultados')
+
+
+#---------------------------------
+# INSCRIPCION
+#---------------------------------
 
 class InscripcionExamen(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/inscripcion.html'
@@ -65,6 +104,13 @@ class InscripcionExamen(LoginRequiredMixin, TemplateView):
         return HttpResponseRedirect(reverse('dashboard_users:dashboard'))
 
 
+#------------------------------
+#   Resultados
+#------------------------------
 
 class ResultadosExamen(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/resultados.html'
+
+
+
+

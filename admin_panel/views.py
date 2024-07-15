@@ -16,10 +16,15 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 # from .decorators import es_admin
 
-
+#-------------------------------------------------------
 # Función para verificar si el usuario es administrador
+#-------------------------------------------------------
 def es_admin(usuario):
     return usuario.is_superuser
+
+#-----------------------------------------------------------
+# Login Administrador
+#------------------------------------------------------------
 
 #@method_decorator(user_passes_test(es_admin), name='dispatch')
 class AdminLoginView(LoginView):
@@ -28,12 +33,21 @@ class AdminLoginView(LoginView):
     def get_success_url(self):
         return reverse_lazy('admin_panel:admin_panel')
 
+#-----------------------------------------------------------------
+#    ADMIN PANEL
+#----------------------------------------------------------------
+
 # Vista principal del panel de administración
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class VistaAdminPanel(View):
     def get(self, request):
         # Renderiza la plantilla principal del panel de administración
         return render(request, 'admin_panel/admin_panel.html')
+
+
+#-------------------------------------------------------------------
+#                 USUARIOS
+#--------------------------------------------------------------------
 
 # Vista para listar todos los usuarios
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -52,7 +66,7 @@ class CrearUsuario(CreateView):
     success_url = reverse_lazy('admin_panel:lista_usuarios')
     # Renderiza el formulario para crear un usuario y maneja su creación
 
-
+# Vista para editar un nuevo usuario
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class EditarUsuario(UpdateView):
     model = CustomUser
@@ -69,7 +83,6 @@ class EditarUsuario(UpdateView):
         messages.error(self.request, 'Hubo un error al actualizar el usuario. Por favor, revisa los datos ingresados.')
         return super().form_invalid(form)
 
-
 # Vista para eliminar un usuario existente
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class EliminarUsuario(DeleteView):
@@ -78,7 +91,9 @@ class EliminarUsuario(DeleteView):
     success_url = reverse_lazy('admin_panel:lista_usuarios')
     # Renderiza una página de confirmación y maneja la eliminación del usuario
 
-
+#------------------------------------------------------------
+#                EXAMEN
+#-----------------------------------------------------------
 
 # Vista para listar todos los exámenes
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -117,8 +132,6 @@ class ListaExamenes(ListView):
         context['current_month'] = int(self.request.GET.get('month', current_month))
         return context
 
-
-
 # Vista para crear un nuevo examen
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class CrearExamen(CreateView):
@@ -144,6 +157,11 @@ class EliminarExamen(DeleteView):
     template_name = 'admin_panel/confirmar_eliminacion_examen.html'
     success_url = reverse_lazy('admin_panel:lista_examenes')
     # Renderiza una página de confirmación y maneja la eliminación del examen
+
+
+#------------------------------------------------------------------
+#     USUARIOS POR EXAMEN
+#-----------------------------------------------------------------
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class UsuariosInscritosView(DetailView):
@@ -172,7 +190,9 @@ class UsuariosInscritosView(DetailView):
         context['page_obj'] = page_obj
         return context
     
-
+#------------------------------------------------------------------------------
+#      PREGUNTAS
+#------------------------------------------------------------------------------
 
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -184,7 +204,6 @@ class ListaPreguntas(ListView):
     def get_queryset(self):
         return Pregunta.objects.all()
     
-
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class CrearPregunta(CreateView):

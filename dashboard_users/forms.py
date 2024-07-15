@@ -1,7 +1,8 @@
 from django import forms
 from django.contrib.auth.forms import PasswordChangeForm
 from users.models import CustomUser
-from .models import Examen, Pregunta
+from .models import Examen, Pregunta, InscripcionExamen
+
 
 class ExamenForm(forms.ModelForm):
     class Meta:
@@ -19,6 +20,14 @@ class ExamenForm(forms.ModelForm):
         }
 
 
+class ResultadoForm(forms.ModelForm):
+    class Meta:
+        model = InscripcionExamen
+        fields = ['resultado']
+        labels = {
+            'resultado': 'Resultado del Examen'
+        }
+        
 
 class PreguntaForm(forms.ModelForm):
     class Meta:

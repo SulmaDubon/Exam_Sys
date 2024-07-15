@@ -12,9 +12,18 @@ from django.views.generic.edit import FormView
 import random
 import string
 import logging
+from django.contrib.auth.views import LogoutView
+from django.urls import reverse_lazy
 
+#---------------------------
 # Configurar el logger
+#---------------------------
+
 logger = logging.getLogger(__name__)
+
+#--------------------------------
+#  USERNAME & PASSWORD
+#---------------------------------
 
 def generate_username(first_name, last_name):
     base_username = f"{first_name.lower()}{last_name.lower()}"
@@ -28,6 +37,10 @@ def generate_username(first_name, last_name):
 def generate_password(length=8):
     """Genera una contraseña aleatoria."""
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+#--------------------------------------
+#  REGISTRO DE USUARIO Y ENVIO DE MAIL
+#---------------------------------------
 
 class UserRegistrationView(FormView):
     template_name = 'user/register.html'
@@ -61,7 +74,9 @@ class UserRegistrationView(FormView):
         return self.render_to_response(self.get_context_data(form=form))
 
 
-
+#-----------------------------------------------
+#  LOGIN USUARIO
+#-----------------------------------------------
 @method_decorator(csrf_protect, name='dispatch')
 class UserLoginView(ListView):
     def get(self, request):
@@ -86,3 +101,7 @@ class UserLoginView(ListView):
             logger.warning(f"Formulario no válido: {form.errors}")
             messages.error(request, 'Nombre de usuario o contraseña incorrectos.')
         return render(request, 'user/login.html', {'form': form})
+
+
+class CustomLogoutView(LogoutView):
+    next_page = reverse_lazy('users:login')

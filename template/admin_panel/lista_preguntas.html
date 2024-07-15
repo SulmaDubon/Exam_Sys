@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Preguntas</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #007bff;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        .button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table th, table td {
+            padding: 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        table th {
+            background-color: #007bff;
+            color: #fff;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        ul li {
+            margin-bottom: 5px;
+        }
+        .actions a {
+            margin-right: 10px;
+            text-decoration: none;
+            color: #007bff;
+            transition: color 0.3s ease;
+        }
+        .actions a:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lista de Preguntas</h1>
+        <a href="{% url 'admin_panel:crear_pregunta' %}" class="button">Crear Pregunta</a>
+        <table>
+            <thead>
+                <tr>
+                    <th>Texto de la Pregunta</th>
+                    <th>Respuestas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pregunta in preguntas %}
+                <tr>
+                    <td>{{ pregunta.texto }}</td>
+                    <td>
+                        <ul>
+                            <li><strong>Correcta:</strong> {{ pregunta.respuesta_correcta }}</li>
+                            <li><strong>1:</strong> {{ pregunta.respuesta1 }}</li>
+                            <li><strong>2:</strong> {{ pregunta.respuesta2 }}</li>
+                            <li><strong>3:</strong> {{ pregunta.respuesta3 }}</li>
+                            <li><strong>4:</strong> {{ pregunta.respuesta4 }}</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <a href="{% url 'admin_panel:editar_pregunta' pregunta.pk %}">Editar</a>
+                        <a href="{% url 'admin_panel:eliminar_pregunta' pregunta.pk %}">Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

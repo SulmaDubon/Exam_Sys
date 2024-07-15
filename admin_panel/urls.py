@@ -12,7 +12,11 @@ from .views import (
     CrearExamen,
     EditarExamen,
     EliminarExamen,
-    UsuariosInscritosView
+    UsuariosInscritosView,
+    ListaPreguntas,
+    CrearPregunta,
+    EditarPregunta,
+    EliminarPregunta
 )
 
 app_name = 'admin_panel'
@@ -29,4 +33,8 @@ urlpatterns = [
     path('examenes/editar/<int:pk>/', EditarExamen.as_view(), name='editar_examen'),
     path('examenes/eliminar/<int:pk>/', EliminarExamen.as_view(), name='eliminar_examen'),
     path('examenes/usuarios-inscritos/<int:pk>/', UsuariosInscritosView.as_view(), name='usuarios_inscritos'),
+    path('preguntas/', ListaPreguntas.as_view(), name='lista_preguntas'),  # Ruta para la lista general de preguntas
+    path('preguntas/crear/', CrearPregunta.as_view(), name='crear_pregunta'),
+    path('preguntas/editar/<int:pk>/', EditarPregunta.as_view(), name='editar_pregunta'),
+    path('preguntas/eliminar/<int:pk>/', EliminarPregunta.as_view(), name='eliminar_pregunta'),
 ]

@@ -6,8 +6,8 @@ from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from users.models import CustomUser
-from dashboard_users.models import Examen
-from dashboard_users.forms import ExamenForm   # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.models import Examen, Pregunta
+from dashboard_users.forms import ExamenForm, PreguntaForm   # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
@@ -171,3 +171,43 @@ class UsuariosInscritosView(DetailView):
         context['search_query'] = search_query
         context['page_obj'] = page_obj
         return context
+    
+
+
+
+@method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
+class ListaPreguntas(ListView):
+    model = Pregunta
+    template_name = 'admin_panel/lista_preguntas.html'
+    context_object_name = 'preguntas'
+
+    def get_queryset(self):
+        return Pregunta.objects.all()
+    
+
+
+@method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
+class CrearPregunta(CreateView):
+    model = Pregunta
+    form_class = PreguntaForm
+    template_name = 'admin_panel/formulario_pregunta.html'
+
+    def get_success_url(self):
+        return reverse_lazy('admin_panel:lista_preguntas')
+
+@method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
+class EditarPregunta(UpdateView):
+    model = Pregunta
+    form_class = PreguntaForm
+    template_name = 'admin_panel/formulario_pregunta.html'
+
+    def get_success_url(self):
+        return reverse_lazy('admin_panel:lista_preguntas')
+
+@method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
+class EliminarPregunta(DeleteView):
+    model = Pregunta
+    template_name = 'admin_panel/confirmar_eliminacion_pregunta.html'
+
+    def get_success_url(self):
+        return reverse_lazy('admin_panel:lista_preguntas')

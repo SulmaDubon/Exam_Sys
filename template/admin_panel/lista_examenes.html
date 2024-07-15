@@ -3,7 +3,7 @@
 {% block title %}Gestionar Exámenes{% endblock %}
 
 {% block content %}
-<h1>Lista de Exámenes</h1>
+<h1>Gestionar Exámenes</h1>
 
 <form method="get" class="date-filter-form">
     <label for="year">Año:</label>
@@ -22,6 +22,11 @@
     
     <button type="submit">Filtrar</button>
 </form>
+
+<div class="button-container">
+    <a href="{% url 'admin_panel:crear_examen' %}" class="btn btn-primary">Crear Nuevo Examen</a>
+    <a href="{% url 'admin_panel:lista_preguntas' %}" class="btn btn-secondary">Preguntas</a>
+</div>
 
 <table>
     <thead>
@@ -58,5 +63,16 @@
         {% endfor %}
     </tbody>
 </table>
-<a href="{% url 'admin_panel:crear_examen' %}">Crear Nuevo Examen</a>
 {% endblock %}
+
+<style>
+.button-container {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.button-container .btn {
+    margin-right: 10px;
+}
+</style>

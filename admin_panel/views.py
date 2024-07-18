@@ -101,6 +101,7 @@ class ListaExamenes(ListView):
     model = Examen
     template_name = 'admin_panel/lista_examenes.html'
     context_object_name = 'examenes'
+    paginate_by = 10  # Número de elementos por página
 
     def get_queryset(self):
         queryset = Examen.objects.all()
@@ -111,6 +112,10 @@ class ListaExamenes(ListView):
         
         if year and month:
             queryset = queryset.filter(fecha__year=year, fecha__month=month)
+        elif year:
+            queryset = queryset.filter(fecha__year=year)
+        elif month:
+            queryset = queryset.filter(fecha__month=month)
         
         if direction == 'desc':
             order = '-' + order
@@ -128,9 +133,10 @@ class ListaExamenes(ListView):
         ]
         context['year_list'] = year_list
         context['month_list'] = month_list
-        context['current_year'] = int(self.request.GET.get('year', current_year))
-        context['current_month'] = int(self.request.GET.get('month', current_month))
+        context['current_year'] = self.request.GET.get('year')
+        context['current_month'] = self.request.GET.get('month')
         return context
+    
 
 # Vista para crear un nuevo examen
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')

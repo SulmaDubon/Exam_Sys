@@ -13,7 +13,7 @@ from .forms import ExamenForm
 from django.contrib import messages
 from django.utils import timezone
 import random
-
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import CambiarContrasenaForm
 
 #------------------------------
@@ -47,8 +47,9 @@ class CambiarContrasena(LoginRequiredMixin, View):
         form = self.form_class(data=request.POST, user=request.user)
         if form.is_valid():
             form.save()
-            # Redirigir a alguna página de éxito o mostrar un mensaje
+            messages.success(request, 'Contraseña cambiada con éxito.')
             return redirect('dashboard_users:dashboard')
+        messages.error(request, 'Por favor corrige los errores a continuación.')
         return render(request, self.template_name, {'form': form})
 
 #----------------------------------------

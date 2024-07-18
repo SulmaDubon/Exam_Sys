@@ -11,6 +11,7 @@
         }
         h1 {
             color: #333;
+            text-align: center;
         }
         form {
             max-width: 600px;
@@ -31,7 +32,7 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
-        button {
+        .btn-submit {
             width: 100%;
             padding: 10px;
             background-color: #007bff;
@@ -39,19 +40,21 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 18px; /* Tamaño de fuente consistente */
             transition: background-color 0.3s ease;
         }
-        button:hover {
+        .btn-submit:hover {
             background-color: #0056b3;
         }
     </style>
 </head>
 <body>
-    <h1>{{ view.action|capfirst }} Examen</h1>
+    <h1>{{ action|capfirst }} Examen</h1>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">{{ view.action|capfirst }}</button>
+        <button type="submit" class="btn-submit">Enviar</button>
     </form>
 </body>
 </html>
+

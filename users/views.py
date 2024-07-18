@@ -79,9 +79,11 @@ class UserRegistrationView(FormView):
 #-----------------------------------------------
 @method_decorator(csrf_protect, name='dispatch')
 class UserLoginView(ListView):
+    template_name = 'user/login.html'  # Asegúrate de que esta línea esté presente
+
     def get(self, request):
         form = CustomAuthenticationForm()
-        return render(request, 'user/login.html', {'form': form})
+        return render(request, self.template_name, {'form': form})
 
     def post(self, request):
         form = CustomAuthenticationForm(request, data=request.POST)
@@ -100,8 +102,7 @@ class UserLoginView(ListView):
         else:
             logger.warning(f"Formulario no válido: {form.errors}")
             messages.error(request, 'Nombre de usuario o contraseña incorrectos.')
-        return render(request, 'user/login.html', {'form': form})
-
+        return render(request, self.template_name, {'form': form})
 
 class CustomLogoutView(LogoutView):
-    next_page = reverse_lazy('users:login')
+    next_page = reverse_lazy('home')

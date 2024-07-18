@@ -48,6 +48,9 @@ class PreguntaForm(forms.ModelForm):
 
 
 class CambiarContrasenaForm(PasswordChangeForm):
-    class Meta:
-        model = CustomUser
-        fields = ['old_password', 'new_password1', 'new_password2']
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user')
+        super().__init__(self.user, *args, **kwargs)
+        self.fields['old_password'].widget.attrs.update({'class': 'form-control'})
+        self.fields['new_password1'].widget.attrs.update({'class': 'form-control'})
+        self.fields['new_password2'].widget.attrs.update({'class': 'form-control'})

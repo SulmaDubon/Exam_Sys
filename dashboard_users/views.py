@@ -16,6 +16,7 @@ import random
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import CambiarContrasenaForm
 
+
 #------------------------------
 #   DASHBOARD
 #-------------------------------
@@ -93,7 +94,8 @@ class InscripcionExamen(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['examenes'] = Examen.objects.all()
+        now = timezone.now()
+        context['examenes'] = Examen.objects.filter(fecha__gt=now.date()) | Examen.objects.filter(fecha=now.date(), hora__gt=now.time())
         return context
 
     def post(self, request, *args, **kwargs):

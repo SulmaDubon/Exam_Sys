@@ -1,13 +1,130 @@
 {% extends 'base.html' %}
 
-{% block title %}Crear Pregunta{% endblock %}
+{% block title %}Formulario de Pregunta{% endblock %}
 
 {% block content %}
-<h1>Crear Pregunta</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Guardar</button>
-</form>
-<a href="{% url 'admin_panel:lista_preguntas' %}">Volver a la lista de preguntas</a>
+<div class="admin-container">
+    <h1>Formulario de Pregunta</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="{{ form.texto.id_for_label }}">Texto de la Pregunta</label>
+            {{ form.texto }}
+            {% if form.texto.errors %}
+                <div class="error">{{ form.texto.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>Marque la correcta</label>
+            <div class="respuesta-group">
+                <input type="radio" name="respuesta_correcta" value="1" id="respuesta_correcta_1" {% if form.initial.respuesta_correcta == '1' %}checked{% endif %}>
+                <label for="respuesta_correcta_1">{{ form.respuesta1 }}</label>
+            </div>
+            <div class="respuesta-group">
+                <input type="radio" name="respuesta_correcta" value="2" id="respuesta_correcta_2" {% if form.initial.respuesta_correcta == '2' %}checked{% endif %}>
+                <label for="respuesta_correcta_2">{{ form.respuesta2 }}</label>
+            </div>
+            <div class="respuesta-group">
+                <input type="radio" name="respuesta_correcta" value="3" id="respuesta_correcta_3" {% if form.initial.respuesta_correcta == '3' %}checked{% endif %}>
+                <label for="respuesta_correcta_3">{{ form.respuesta3 }}</label>
+            </div>
+            <div class="respuesta-group">
+                <input type="radio" name="respuesta_correcta" value="4" id="respuesta_correcta_4" {% if form.initial.respuesta_correcta == '4' %}checked{% endif %}>
+                <label for="respuesta_correcta_4">{{ form.respuesta4 }}</label>
+            </div>
+            {% if form.respuesta_correcta.errors %}
+                <div class="error">{{ form.respuesta_correcta.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="button-container">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'admin_panel:lista_preguntas' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .admin-container {
+        padding: 20px;
+        max-width: 600px;
+        margin: auto;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    input[type="text"], textarea, select {
+        padding: 10px;
+        width: calc(100% - 22px);
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    .respuesta-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .respuesta-group input[type="radio"] {
+        margin-right: 10px;
+    }
+    .respuesta-group label {
+        flex-grow: 1;
+    }
+    .button-container {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+    }
+    .btn-primary {
+        background-color: #007bff;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+    .error {
+        color: red;
+        font-size: 0.875em;
+        margin-top: -10px;
+        margin-bottom: 10px;
+    }
+</style>
 {% endblock %}

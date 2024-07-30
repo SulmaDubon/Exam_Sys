@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.forms import PasswordChangeForm
 from users.models import CustomUser
 from .models import Examen, Pregunta, InscripcionExamen
-
+from django.core.exceptions import ValidationError
 
 class ExamenForm(forms.ModelForm):
     class Meta:
@@ -30,20 +30,32 @@ class ResultadoForm(forms.ModelForm):
         
 
 class PreguntaForm(forms.ModelForm):
+    respuesta_correcta = forms.ChoiceField(
+        choices=[('1', 'Respuesta 1'), ('2', 'Respuesta 2'), ('3', 'Respuesta 3'), ('4', 'Respuesta 4')],
+        widget=forms.RadioSelect,
+        label='Marque la correcta'
+    )
+
     class Meta:
         model = Pregunta
-        fields = ['texto', 'respuesta_correcta', 'respuesta1', 'respuesta2', 'respuesta3', 'respuesta4']
+        fields = ['texto', 'respuesta1', 'respuesta2', 'respuesta3', 'respuesta4', 'respuesta_correcta', 'orden']
         labels = {
             'texto': 'Texto de la Pregunta',
-            'respuesta_correcta': 'Respuesta Correcta',
             'respuesta1': 'Respuesta 1',
             'respuesta2': 'Respuesta 2',
             'respuesta3': 'Respuesta 3',
-            'respuesta4': 'Respuesta 4'
+            'respuesta4': 'Respuesta 4',
+            'orden': 'Orden de visualización'
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        respuesta_correcta = cleaned_data.get('respuesta_correcta')
 
+        if not respuesta_correcta:
+            self.add_error('respuesta_correcta', 'Debe seleccionar la respuesta correcta.')
 
+        return cleaned_data
 
 
 

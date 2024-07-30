@@ -14,7 +14,17 @@ from django.contrib import messages
 from datetime import datetime
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.urls import reverse
+
+
+
+
+
+
+
+
 # from .decorators import es_admin
+
 
 #-------------------------------------------------------
 # Función para verificar si el usuario es administrador
@@ -136,7 +146,6 @@ class ListaExamenes(ListView):
         context['current_year'] = self.request.GET.get('year')
         context['current_month'] = self.request.GET.get('month')
         return context
-    
 
 # Vista para crear un nuevo examen
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -145,7 +154,6 @@ class CrearExamen(CreateView):
     form_class = ExamenForm
     template_name = 'admin_panel/formulario_examen.html'
     success_url = reverse_lazy('admin_panel:lista_examenes')
-    # Renderiza el formulario para crear un examen y maneja su creación
 
 # Vista para editar un examen existente
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -154,7 +162,6 @@ class EditarExamen(UpdateView):
     form_class = ExamenForm
     template_name = 'admin_panel/formulario_examen.html'
     success_url = reverse_lazy('admin_panel:lista_examenes')
-    # Renderiza el formulario para editar un examen y maneja su actualización
 
 # Vista para eliminar un examen existente
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -162,7 +169,6 @@ class EliminarExamen(DeleteView):
     model = Examen
     template_name = 'admin_panel/confirmar_eliminacion_examen.html'
     success_url = reverse_lazy('admin_panel:lista_examenes')
-    # Renderiza una página de confirmación y maneja la eliminación del examen
 
 
 #------------------------------------------------------------------
@@ -208,7 +214,7 @@ class ListaPreguntas(ListView):
     context_object_name = 'preguntas'
 
     def get_queryset(self):
-        return Pregunta.objects.all()
+        return Pregunta.objects.all().order_by('orden')
     
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -236,3 +242,35 @@ class EliminarPregunta(DeleteView):
 
     def get_success_url(self):
         return reverse_lazy('admin_panel:lista_preguntas')
+
+#------------------------------------------------
+#   ACCIONES
+#------------------------------------------------
+class AccionesExamenesView(View):
+    def post(self, request, *args, **kwargs):
+        action = request.POST.get('action')
+        selected_exams = request.POST.getlist('selected_exams')
+
+        if not selected_exams:
+            messages.warning(request, "No se seleccionaron exámenes.")
+            return redirect('admin_panel:lista_examenes')
+
+        if action == 'edit':
+            if len(selected_exams) > 1:
+                messages.warning(request, "Solo puedes editar un examen a la vez.")
+                return redirect('admin_panel:lista_examenes')
+            return redirect(reverse('admin_panel:editar_examen', args=[selected_exams[0]]))
+        
+        elif action == 'delete':
+            for exam_id in selected_exams:
+                exam = get_object_or_404(Examen, id=exam_id)
+                exam.delete()
+            messages.success(request, "Exámenes eliminados con éxito.")
+        
+        elif action == 'users':
+            if len(selected_exams) > 1:
+                messages.warning(request, "Solo puedes ver los usuarios inscritos de un examen a la vez.")
+                return redirect('admin_panel:lista_examenes')
+            return redirect(reverse('admin_panel:usuarios_inscritos', args=[selected_exams[0]]))
+
+        return redirect('admin_panel:lista_examenes')

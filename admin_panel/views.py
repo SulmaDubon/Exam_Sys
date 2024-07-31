@@ -16,13 +16,6 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.urls import reverse
 
-
-
-
-
-
-
-
 # from .decorators import es_admin
 
 

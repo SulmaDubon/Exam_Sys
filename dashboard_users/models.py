@@ -13,6 +13,7 @@ class Examen(models.Model):
 
     def __str__(self):
         return f"Examen el {self.fecha} a las {self.hora}"
+    
 
 class InscripcionExamen(models.Model):
     usuario = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -30,22 +31,17 @@ class InscripcionExamen(models.Model):
 
 
 class Pregunta(models.Model):
-    texto = models.TextField(verbose_name="Texto de la pregunta")
-    respuesta1 = models.CharField(max_length=255, verbose_name="Respuesta 1")
-    respuesta2 = models.CharField(max_length=255, verbose_name="Respuesta 2")
-    respuesta3 = models.CharField(max_length=255, verbose_name="Respuesta 3")
-    respuesta4 = models.CharField(max_length=255, verbose_name="Respuesta 4")
-    respuesta_correcta = models.PositiveSmallIntegerField(choices=[
-        (1, 'Respuesta 1'),
-        (2, 'Respuesta 2'),
-        (3, 'Respuesta 3'),
-        (4, 'Respuesta 4'),
-    ], verbose_name="Respuesta correcta")
-    orden = models.PositiveIntegerField(default=0, verbose_name="Orden de visualización")
+    examen = models.ForeignKey(Examen, related_name='preguntas', on_delete=models.CASCADE)
+    texto = models.TextField()
+    respuesta1 = models.CharField(max_length=255)
+    respuesta2 = models.CharField(max_length=255)
+    respuesta3 = models.CharField(max_length=255)
+    respuesta4 = models.CharField(max_length=255)
+    respuesta_correcta = models.CharField(max_length=1, choices=[('1', 'Respuesta 1'), ('2', 'Respuesta 2'), ('3', 'Respuesta 3'), ('4', 'Respuesta 4')])
+    orden = models.IntegerField()
 
     def __str__(self):
-        return self.texto
-
+        return self.textoexit()
 
 
 class ExclusionPregunta(models.Model):

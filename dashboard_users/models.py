@@ -3,8 +3,6 @@ from django.db import models
 from django.utils import timezone
 from users.models import CustomUser
 
-
-
 class Examen(models.Model):
     nombre = models.CharField(max_length=255, verbose_name="Nombre del examen")
     fecha = models.DateField()
@@ -24,14 +22,8 @@ class InscripcionExamen(models.Model):
     def __str__(self):
         return f"Inscripción de {self.usuario.username} en {self.examen.nombre}"
 
-#----------------------------------------
-#       PREGUNTAS
-#----------------------------------------
-
-
-
 class Pregunta(models.Model):
-    examen = models.ForeignKey(Examen, related_name='preguntas', on_delete=models.CASCADE)
+    examen = models.ForeignKey(Examen, related_name='preguntas', on_delete=models.CASCADE, null=True, blank=True)
     texto = models.TextField()
     respuesta1 = models.CharField(max_length=255)
     respuesta2 = models.CharField(max_length=255)
@@ -41,8 +33,7 @@ class Pregunta(models.Model):
     orden = models.IntegerField()
 
     def __str__(self):
-        return self.textoexit()
-
+        return self.texto
 
 class ExclusionPregunta(models.Model):
     examen = models.ForeignKey(Examen, on_delete=models.CASCADE)

@@ -70,42 +70,36 @@ class GenerarExamenView(LoginRequiredMixin, TemplateView):
         now = timezone.now()
 
         # Comentar estas líneas para omitir el requisito de fecha y hora
-        # local_tz = now.tzinfo
-        # inicio_examen = datetime.combine(examen.fecha, examen.hora).replace(tzinfo=local_tz)
-        # fin_acceso = inicio_examen + timedelta(minutes=15)
-        # fin_examen = inicio_examen + timedelta(hours=1)
+        local_tz = now.tzinfo
+        inicio_examen = datetime.combine(examen.fecha, examen.hora).replace(tzinfo=local_tz)
+        fin_acceso = inicio_examen + timedelta(minutes=15)
+        fin_examen = inicio_examen + timedelta(hours=1)
 
-        # if inicio_examen <= now <= fin_acceso:
-        #     tiempo_restante = (fin_examen - now).total_seconds()
-        #     preguntas = Pregunta.objects.filter(examen=examen).order_by('orden')
+        if inicio_examen <= now <= fin_acceso:
+            tiempo_restante = (fin_examen - now).total_seconds()
 
-        #     paginator = Paginator(preguntas, 10)  # 10 preguntas por página
-        #     page_number = self.request.GET.get('page')
-        #     page_obj = paginator.get_page(page_number)
+            # Selección aleatoria de preguntas
+            total_preguntas = Pregunta.objects.filter(examen=examen).count()
+            preguntas_a_mostrar = min(10, total_preguntas)  # Mostrar hasta 10 preguntas al azar
+            preguntas = Pregunta.objects.filter(examen=examen).order_by('?')[:preguntas_a_mostrar]
 
-        #     context['preguntas'] = page_obj
-        #     context['examen'] = examen
-        #     context['usuario'] = self.request.user
-        #     context['tiempo_restante'] = int(tiempo_restante)
-        # elif now < inicio_examen:
-        #     context['cuenta_regresiva'] = int((inicio_examen - now).total_seconds())
-        #     context['mensaje'] = 'El examen estará disponible en:'
-        # else:
-        #     context['error'] = 'El tiempo de acceso al examen ha expirado.'
+            paginator = Paginator(preguntas, 10)  # Paginación por página
+            page_number = self.request.GET.get('page')
+            page_obj = paginator.get_page(page_number)
 
-        # Lógica sin restricciones de tiempo
-        preguntas = Pregunta.objects.filter(examen=examen).order_by('orden')
-        paginator = Paginator(preguntas, 10)  # 10 preguntas por página
-        page_number = self.request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
-
-        context['preguntas'] = page_obj
-        context['examen'] = examen
-        context['usuario'] = self.request.user
-        context['tiempo_restante'] = 3600  # 1 hora en segundos para la prueba
+            context['preguntas'] = page_obj
+            context['examen'] = examen
+            context['usuario'] = self.request.user
+            context['tiempo_restante'] = int(tiempo_restante)
+        elif now < inicio_examen:
+            context['cuenta_regresiva'] = int((inicio_examen - now).total_seconds())
+            context['mensaje'] = 'El examen estará disponible en:'
+        else:
+            context['error'] = 'El tiempo de acceso al examen ha expirado.'
 
         return context
-    
+
+
 
 class SubmitExamenView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):

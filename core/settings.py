@@ -140,3 +140,20 @@ AUTH_USER_MODEL = 'users.CustomUser'
 LOGIN_URL = 'users:login'
 LOGIN_REDIRECT_URL = 'dashboard_users:dashboard'
 LOGOUT_REDIRECT_URL = 'home'
+
+# Configuración de Celery
+CELERY_BROKER_URL = 'amqp://guest:guest@localhost//'
+CELERY_RESULT_BACKEND = 'rpc://'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'America/Mexico_City'
+CELERY_WORKER_CONCURRENCY = 4
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_LOG_LEVEL = 'INFO'
+CELERY_WORKER_LOG_FILE = '/path/to/celery_worker.log'
+
+# Opcional: Rutas de Tareas
+CELERY_TASK_ROUTES = {
+    'myapp.tasks.add': {'queue': 'add_queue'},
+}

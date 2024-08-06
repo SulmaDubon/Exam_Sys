@@ -1,99 +1,51 @@
-{% extends 'base.html' %}
-
-{% block title %}Examen{% endblock %}
-
-{% block head %}
-<style>
-    .exam-container {
-        padding: 20px;
-        max-width: 800px;
-        margin: auto;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    h1, h2 {
-        color: #333;
-        text-align: center;
-    }
-    .countdown {
-        font-size: 2em;
-        text-align: center;
-        color: #ff0000;
-    }
-    .paginacion {
-        display: flex;
-        justify-content: space-between;
-    }
-</style>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var countdownElement = document.getElementById('countdown');
-        var formElement = document.getElementById('exam-form');
-        var tiempoRestante = parseInt(countdownElement.getAttribute('data-time'), 10);
-
-        var interval = setInterval(function () {
-            tiempoRestante--;
-            var minutes = Math.floor(tiempoRestante / 60);
-            var seconds = tiempoRestante % 60;
-            countdownElement.textContent = minutes + "m " + seconds + "s ";
-
-            if (tiempoRestante <= 0) {
-                clearInterval(interval);
-                alert("El tiempo del examen ha finalizado. El examen se enviará automáticamente.");
-                formElement.submit();
-            }
-        }, 1000);
-    });
-</script>
-{% endblock %}
+{% extends "base.html" %}
 
 {% block content %}
-<div class="exam-container">
-    <h1>Examen</h1>
-    {% if error %}
-        <p>{{ error }}</p>
-    {% elif cuenta_regresiva %}
-        <p>{{ mensaje }}</p>
-        <div id="countdown" class="countdown" data-time="{{ cuenta_regresiva }}"></div>
-    {% else %}
-        <p>Bienvenido, {{ usuario.first_name }} {{ usuario.last_name }} (Cédula: {{ usuario.cedula }})</p>
-        <div id="countdown" class="countdown" data-time="{{ tiempo_restante }}"></div>
-        <form method="post" action="{% url 'dashboard_users:submit_examen' examen.id %}" id="exam-form">
-            {% csrf_token %}
-            <ul>
-                {% for pregunta in preguntas %}
-                    <li>
-                        <p>{{ pregunta.texto }}</p>
-                        <label>
-                            <input type="radio" name="pregunta_{{ pregunta.id }}" value="1">
-                            {{ pregunta.respuesta1 }}
-                        </label><br>
-                        <label>
-                            <input type="radio" name="pregunta_{{ pregunta.id }}" value="2">
-                            {{ pregunta.respuesta2 }}
-                        </label><br>
-                        <label>
-                            <input type="radio" name="pregunta_{{ pregunta.id }}" value="3">
-                            {{ pregunta.respuesta3 }}
-                        </label><br>
-                        <label>
-                            <input type="radio" name="pregunta_{{ pregunta.id }}" value="4">
-                            {{ pregunta.respuesta4 }}
-                        </label><br>
-                    </li>
-                {% endfor %}
-            </ul>
-            <div class="paginacion">
-                {% if preguntas.has_previous %}
-                    <a href="?page={{ preguntas.previous_page_number }}">Anterior</a>
-                {% endif %}
-                {% if preguntas.has_next %}
-                    <a href="?page={{ preguntas.next_page_number }}">Siguiente</a>
-                {% endif %}
+<h1>{{ examen.nombre }}</h1>
+
+{% if error %}
+    <p>{{ error }}</p>
+{% elif cuenta_regresiva %}
+    <p>{{ mensaje }} {{ cuenta_regresiva }} segundos</p>
+{% else %}
+    <p>Tiempo restante: {{ tiempo_restante }} segundos</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for pregunta in preguntas %}
+            <div>
+                <p>{{ pregunta.texto }}</p>
+                <ul>
+                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="1">{{ pregunta.respuesta1 }}</li>
+                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="2">{{ pregunta.respuesta2 }}</li>
+                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="3">{{ pregunta.respuesta3 }}</li>
+                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="4">{{ pregunta.respuesta4 }}</li>
+                </ul>
             </div>
-            <button type="submit">Enviar Examen</button>
-        </form>
-    {% endif %}
-</div>
+        {% endfor %}
+
+        <button type="submit">Enviar</button>
+    </form>
+
+    <div>
+        <span>Paginas:</span>
+        <div class="pagination">
+            <span class="step-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1">&laquo; first</a>
+                    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+                {% endif %}
+
+                <span class="current">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+{% endif %}
 {% endblock %}

@@ -1,51 +1,130 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+
+{% block title %}Examen{% endblock %}
+
+{% block head %}
+<style>
+    .container {
+        font-family: Arial, sans-serif;
+        max-width: 900px;
+        margin: 0 auto;
+        background-color: #fff;
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+    }
+    .header, .footer {
+        text-align: center;
+    }
+    .instructions, .user-info, .questions {
+        margin-bottom: 20px;
+    }
+    .instructions p, .user-info p {
+        margin: 10px 0;
+    }
+    .question {
+        margin-bottom: 20px;
+    }
+    .button {
+        display: inline-block;
+        padding: 10px 20px;
+        color: #fff;
+        background-color: #007bff;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
+    .button:hover {
+        background-color: #0056b3;
+    }
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    .pagination a {
+        margin: 0 5px;
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
+    .pagination a:hover {
+        background-color: #0056b3;
+    }
+    .pagination .current {
+        margin: 0 5px;
+        padding: 10px 15px;
+        background-color: #0056b3;
+        color: #fff;
+        border-radius: 5px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1>{{ examen.nombre }}</h1>
+<div class="container">
+    <div class="header">
+        <h1>Bienvenido al Examen</h1>
+    </div>
 
-{% if error %}
-    <p>{{ error }}</p>
-{% elif cuenta_regresiva %}
-    <p>{{ mensaje }} {{ cuenta_regresiva }} segundos</p>
-{% else %}
-    <p>Tiempo restante: {{ tiempo_restante }} segundos</p>
+    <div class="user-info">
+        <h2>Información del Usuario</h2>
+        <p><strong>Nombre:</strong> {{ usuario.first_name }} {{ usuario.last_name }}</p>
+        <p><strong>Cédula:</strong> {{ usuario.cedula }}</p>
+    </div>
+
+    <div class="instructions">
+        <h2>Instrucciones</h2>
+        <p>Por favor, responda todas las preguntas. Tiene una hora para completar el examen. </p>
+        <p>Tiempo restante: <span id="tiempo-restante">{{ tiempo_restante }}</span> segundos</p>
+    </div>
 
     <form method="post">
         {% csrf_token %}
-        {% for pregunta in preguntas %}
-            <div>
-                <p>{{ pregunta.texto }}</p>
-                <ul>
-                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="1">{{ pregunta.respuesta1 }}</li>
-                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="2">{{ pregunta.respuesta2 }}</li>
-                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="3">{{ pregunta.respuesta3 }}</li>
-                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="4">{{ pregunta.respuesta4 }}</li>
-                </ul>
-            </div>
-        {% endfor %}
+        <div class="questions">
+            {% for pregunta in page_obj %}
+                <div class="question">
+                    <!-- Calcular la numeración continua de la pregunta -->
+                    <h3>{{ page_obj.start_index|add:forloop.counter0 }}. {{ pregunta.texto }}</h3>
+                    <ul>
+                        <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="respuesta1"> {{ pregunta.respuesta1 }}</li>
+                        <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="respuesta2"> {{ pregunta.respuesta2 }}</li>
+                        <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="respuesta3"> {{ pregunta.respuesta3 }}</li>
+                        <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="respuesta4"> {{ pregunta.respuesta4 }}</li>
+                    </ul>
+                </div>
+            {% endfor %}
+        </div>
 
-        <button type="submit">Enviar</button>
+        <!-- Navegación de Páginas -->
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">&laquo; Primero</a>
+                <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="current">{{ num }}</span>
+                {% else %}
+                    <a href="?page={{ num }}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">Último &raquo;</a>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="button">Enviar Examen</button>
     </form>
 
-    <div>
-        <span>Paginas:</span>
-        <div class="pagination">
-            <span class="step-links">
-                {% if page_obj.has_previous %}
-                    <a href="?page=1">&laquo; first</a>
-                    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
-                {% endif %}
-
-                <span class="current">
-                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
-                </span>
-
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}">next</a>
-                    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
-                {% endif %}
-            </span>
-        </div>
+    <div class="footer">
+        <p>&copy; 2024 Examen Online</p>
     </div>
-{% endif %}
+</div>
 {% endblock %}

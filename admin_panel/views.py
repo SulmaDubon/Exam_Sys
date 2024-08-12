@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from users.models import CustomUser
 from dashboard_users.models import Examen, Pregunta
-from dashboard_users.forms import ExamenForm, PreguntaForm   # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.forms import ExamenForm, PreguntaForm, SubirPreguntasForm  # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
@@ -15,6 +15,9 @@ from datetime import datetime
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.urls import reverse
+from django.db.models import Count
+import random
+import pandas as pd 
 
 # from .decorators import es_admin
 
@@ -205,10 +208,11 @@ class ListaPreguntas(ListView):
     model = Pregunta
     template_name = 'admin_panel/lista_preguntas.html'
     context_object_name = 'preguntas'
+    paginate_by = 10  # Número de preguntas por página
 
     def get_queryset(self):
-        return Pregunta.objects.all().order_by('orden')
-    
+        return Pregunta.objects.all().order_by('id')
+
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class CrearPregunta(CreateView):
@@ -235,6 +239,39 @@ class EliminarPregunta(DeleteView):
 
     def get_success_url(self):
         return reverse_lazy('admin_panel:lista_preguntas')
+
+
+def subir_preguntas(request):
+    if request.method == 'POST':
+        form = SubirPreguntasForm(request.POST, request.FILES)
+        if form.is_valid():
+            excel_file = request.FILES['archivo']
+            try:
+                df = pd.read_excel(excel_file)
+                print("Columnas en el DataFrame:", df.columns)  # Línea de depuración
+                print("Primeras filas del DataFrame:", df.head())  # Línea de depuración
+
+                # Verifica si las columnas necesarias existen
+                required_columns = ['texto', 'respuesta_correcta', 'respuesta1', 'respuesta2', 'respuesta3', 'respuesta4']
+                if not all(column in df.columns for column in required_columns):
+                    raise ValueError("El archivo Excel debe contener las columnas: 'texto', 'respuesta_correcta', 'respuesta1', 'respuesta2', 'respuesta3', 'respuesta4'")
+
+                for _, row in df.iterrows():
+                    Pregunta.objects.create(
+                        texto=row['texto'],
+                        respuesta_correcta=row['respuesta_correcta'],
+                        respuesta1=row['respuesta1'],
+                        respuesta2=row['respuesta2'],
+                        respuesta3=row['respuesta3'],
+                        respuesta4=row['respuesta4']
+                    )
+                return redirect(reverse('admin_panel:lista_preguntas'))
+            except Exception as e:
+                form.add_error(None, f"Error procesando el archivo: {str(e)}")
+    else:
+        form = SubirPreguntasForm()
+    return render(request, 'admin_panel/subir_preguntas.html', {'form': form})
+
 
 #------------------------------------------------
 #   ACCIONES

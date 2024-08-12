@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
-from .models import Examen, Pregunta, InscripcionExamen
+from .models import Examen, Pregunta, InscripcionExamen, UserExam
 from .forms import ExamenForm
 from django.contrib import messages
 from django.utils import timezone
@@ -16,7 +16,6 @@ import random
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import CambiarContrasenaForm
 from datetime import datetime, timedelta 
-import pytz 
 from django.core.paginator import Paginator
 
 #------------------------------
@@ -63,41 +62,71 @@ class CambiarContrasena(LoginRequiredMixin, View):
 class GenerarExamenView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/examen.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def get(self, request, *args, **kwargs):
         examen_id = self.kwargs.get('examen_id')
         examen = get_object_or_404(Examen, id=examen_id)
+        usuario = request.user
+
+        # Verificar si ya existe un examen para el usuario
+        user_exam, created = UserExam.objects.get_or_create(usuario=usuario, examen=examen)
+
+        if created:
+            # Selección aleatoria de 200 preguntas
+            total_preguntas = Pregunta.objects.count()
+            preguntas_a_mostrar = min(10, total_preguntas)
+            preguntas = list(Pregunta.objects.order_by('?')[:preguntas_a_mostrar])
+            user_exam.preguntas.set(preguntas)
+
+        # Verificar si el tiempo de examen ha expirado
         now = timezone.now()
+        tiempo_transcurrido = (now - user_exam.inicio).total_seconds()
+        tiempo_restante = max(0, 3600 - tiempo_transcurrido)  # 1 hora en segundos
 
-        # Comentar estas líneas para omitir el requisito de fecha y hora
-        local_tz = now.tzinfo
-        inicio_examen = datetime.combine(examen.fecha, examen.hora).replace(tzinfo=local_tz)
-        fin_acceso = inicio_examen + timedelta(minutes=15)
-        fin_examen = inicio_examen + timedelta(hours=1)
+        if tiempo_restante <= 0:
+            user_exam.finalizado = True
+            user_exam.save()
+            return redirect('dashboard_users:examen_expirado')
 
-        if inicio_examen <= now <= fin_acceso:
-            tiempo_restante = (fin_examen - now).total_seconds()
+        # Asegúrate de que preguntas no sea None antes de pasarlo al contexto
+        preguntas = user_exam.preguntas.all()
+        if preguntas is None:
+            preguntas = Pregunta.objects.none()  # Devuelve un queryset vacío si es None
 
-            # Selección aleatoria de preguntas
-            total_preguntas = Pregunta.objects.filter(examen=examen).count()
-            preguntas_a_mostrar = min(10, total_preguntas)  # Mostrar hasta 10 preguntas al azar
-            preguntas = Pregunta.objects.filter(examen=examen).order_by('?')[:preguntas_a_mostrar]
+        context = self.get_context_data(
+            examen=examen,
+            usuario=usuario,
+            preguntas=preguntas,
+            tiempo_restante=tiempo_restante
+        )
+        return self.render_to_response(context)
 
-            paginator = Paginator(preguntas, 10)  # Paginación por página
-            page_number = self.request.GET.get('page')
-            page_obj = paginator.get_page(page_number)
+    def get_context_data(self, **kwargs):
+        # Usamos la forma sin argumentos de super() dentro de un método de instancia, lo cual es válido
+        context = super().get_context_data(**kwargs)  
+        preguntas = kwargs.get('preguntas', Pregunta.objects.none())  # Default to empty queryset
+        paginator = Paginator(preguntas, 20)  # Paginación con 20 preguntas por página
 
-            context['preguntas'] = page_obj
-            context['examen'] = examen
-            context['usuario'] = self.request.user
-            context['tiempo_restante'] = int(tiempo_restante)
-        elif now < inicio_examen:
-            context['cuenta_regresiva'] = int((inicio_examen - now).total_seconds())
-            context['mensaje'] = 'El examen estará disponible en:'
-        else:
-            context['error'] = 'El tiempo de acceso al examen ha expirado.'
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context['page_obj'] = page_obj
+        context['examen'] = kwargs.get('examen')
+        context['usuario'] = kwargs.get('usuario')
+
+        # Asegurarse de que tiempo_restante no sea None antes de convertirlo a int
+        tiempo_restante = kwargs.get('tiempo_restante', 0)  # Default to 0 if None
+        context['tiempo_restante'] = int(tiempo_restante)
 
         return context
+
+
+
+    
+
+
+
+class ExamenExpiradoView(TemplateView):
+    template_name = 'dashboard_users/examen_expirado.html'
 
 
 

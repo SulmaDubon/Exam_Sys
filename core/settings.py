@@ -103,9 +103,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'es'
-TIME_ZONE = 'America/Mexico_City'
 USE_I18N = True
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -142,12 +141,11 @@ LOGIN_REDIRECT_URL = 'dashboard_users:dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
 # Configuración de Celery
-CELERY_BROKER_URL = 'amqp://guest:guest@localhost//'
+CELERY_BROKER_URL = 'amqp://usuario:usuario123@localhost//'
 CELERY_RESULT_BACKEND = 'rpc://'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'America/Mexico_City'
 CELERY_WORKER_CONCURRENCY = 4
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_WORKER_LOG_LEVEL = 'INFO'

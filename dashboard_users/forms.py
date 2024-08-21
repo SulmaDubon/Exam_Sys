@@ -1,8 +1,8 @@
 from django import forms
 from django.contrib.auth.forms import PasswordChangeForm
-from users.models import CustomUser
 from .models import Examen, Pregunta, InscripcionExamen
-from django.core.exceptions import ValidationError
+
+
 
 class ExamenForm(forms.ModelForm):
     class Meta:

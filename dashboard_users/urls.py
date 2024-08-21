@@ -9,6 +9,8 @@ from .views import (
     GenerarExamenView,
     SubmitExamenView,
     ExamenExpiradoView,
+    ExamenGenerandoView,
+    ProgramarPreparacionExamenView,
 )
 
 app_name = 'dashboard_users'
@@ -18,6 +20,8 @@ urlpatterns = [
     path('cambiar_contrasena/', CambiarContrasena.as_view(), name='cambiar_contrasena'),
     path('inscripcion/', InscripcionExamenView.as_view(), name='inscripcion'),  # Asegurarse de que el nombre es correcto
     path('examen/<int:examen_id>/', GenerarExamenView.as_view(), name='generar_examen'),  # Añadir examen_id
+    path('examen/generando/<str:task_id>/', ExamenGenerandoView.as_view(), name='examen_generando'),
+    path('examen/programar_preparacion/<int:examen_id>/', ProgramarPreparacionExamenView.as_view(), name='programar_preparacion_examen'),
     path('examen/<int:examen_id>/submit/', SubmitExamenView.as_view(), name='submit_examen'),  # Añadir examen_id para el submit
     path('examen-expirado/', ExamenExpiradoView.as_view(), name='examen_expirado'),
     path('resultados/', ResultadosExamen.as_view(), name='resultados'),

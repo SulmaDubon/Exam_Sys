@@ -3,7 +3,8 @@ from django.db import models
 from django.utils import timezone
 from users.models import CustomUser
 from django.contrib.auth import get_user_model
-
+from datetime import datetime
+from django.utils.timezone import make_aware
 
 User = get_user_model()
 
@@ -15,6 +16,12 @@ class Examen(models.Model):
 
     def __str__(self):
         return f"Examen el {self.fecha} a las {self.hora}"
+
+    @property
+    def fecha_hora_inicio(self):
+        # Combina la fecha y la hora en un solo objeto datetime
+        # Este datetime será "naive", es decir, no contendrá información de zona horaria
+        return datetime.combine(self.fecha, self.hora)
     
 
 class InscripcionExamen(models.Model):
@@ -45,6 +52,6 @@ class UserExam(models.Model):
     preguntas = models.ManyToManyField(Pregunta)
     inicio = models.DateTimeField(auto_now_add=True)
     finalizado = models.BooleanField(default=False)
-
+   
     def __str__(self):
         return f"{self.usuario.username} - {self.examen.nombre}"

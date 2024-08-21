@@ -1,22 +1,29 @@
 # dashboard_users/tasks.py
 from celery import shared_task
-from .models import CustomUser, Examen, Pregunta
-import random
+from .models import Examen, UserExam, Pregunta
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 @shared_task
-def generar_examen_async(usuario_id, examen_id):
-    usuario = CustomUser.objects.get(id=usuario_id)
-    examen = Examen.objects.get(id=examen_id)
-    
-    # Selección aleatoria de preguntas
-    total_preguntas = Pregunta.objects.count()
-    preguntas_a_mostrar = min(10, total_preguntas)  # Mostrar hasta 10 preguntas al azar
-    preguntas = Pregunta.objects.order_by('?')[:preguntas_a_mostrar]
+def preparar_examenes(examen_id):
+    try:
+        examen = Examen.objects.get(id=examen_id)
+        usuarios = examen.usuarios.all()
 
-    # Aquí puedes realizar el procesamiento del examen, como guardar las preguntas seleccionadas, etc.
-    # Ejemplo: Guardar preguntas seleccionadas en una tabla temporal
-    for pregunta in preguntas:
-        # Lógica para procesar cada pregunta
-        pass
+        for usuario in usuarios:
+            user_exam, created = UserExam.objects.get_or_create(usuario=usuario, examen=examen)
 
-    return f"Examen generado para el usuario {usuario.username} en el examen {examen.nombre}"
+            if created:
+                # Selección aleatoria de preguntas
+                total_preguntas = Pregunta.objects.count()
+                preguntas_a_mostrar = min(200, total_preguntas)
+                preguntas = list(Pregunta.objects.order_by('?')[:preguntas_a_mostrar])
+                user_exam.preguntas.set(preguntas)
+            
+            user_exam.inicio = timezone.now()
+            user_exam.save()
+    except Exception as e:
+        logger.error(f"Error preparando examen {examen_id}: {str(e)}")
+        raise e

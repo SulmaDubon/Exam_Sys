@@ -61,7 +61,37 @@
         color: #fff;
         border-radius: 5px;
     }
+    #cronometro {
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        margin: 20px 0;
+    }
 </style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var tiempoRestante = {{ tiempo_restante }};
+        var cronometro = document.getElementById('cronometro');
+
+        function actualizarCronometro() {
+            var minutos = Math.floor(tiempoRestante / 60);
+            var segundos = tiempoRestante % 60;
+            cronometro.textContent = `Tiempo restante: ${minutos}:${segundos < 10 ? '0' : ''}${segundos} minutos`;
+
+            if (tiempoRestante <= 0) {
+                clearInterval(intervalo);
+                alert("El tiempo ha terminado. El examen se enviará automáticamente.");
+                document.forms[0].submit();  // Enviar el examen automáticamente cuando el tiempo termine
+            }
+
+            tiempoRestante--;
+        }
+
+        var intervalo = setInterval(actualizarCronometro, 1000);
+        actualizarCronometro();  // Actualizar inmediatamente al cargar la página
+    });
+</script>
 {% endblock %}
 
 {% block content %}
@@ -79,15 +109,15 @@
     <div class="instructions">
         <h2>Instrucciones</h2>
         <p>Por favor, responda todas las preguntas. Tiene una hora para completar el examen. </p>
-        <p>Tiempo restante: <span id="tiempo-restante">{{ tiempo_restante }}</span> segundos</p>
     </div>
+
+    <div id="cronometro"></div>
 
     <form method="post">
         {% csrf_token %}
         <div class="questions">
             {% for pregunta in page_obj %}
                 <div class="question">
-                    <!-- Calcular la numeración continua de la pregunta -->
                     <h3>{{ page_obj.start_index|add:forloop.counter0 }}. {{ pregunta.texto }}</h3>
                     <ul>
                         <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="respuesta1"> {{ pregunta.respuesta1 }}</li>

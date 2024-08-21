@@ -1,22 +1,24 @@
 # dashboard_users/views.py
 
+from datetime import timedelta
 from django.shortcuts import render, redirect
 from django.views import View
-from django.views.generic import CreateView, TemplateView
+from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect
-from django.urls import reverse, reverse_lazy
-from django.utils.decorators import method_decorator
+from django.urls import reverse
 from .models import Examen, Pregunta, InscripcionExamen, UserExam
-from .forms import ExamenForm
 from django.contrib import messages
 from django.utils import timezone
-import random
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import CambiarContrasenaForm
-from datetime import datetime, timedelta 
 from django.core.paginator import Paginator
+from .tasks import preparar_examenes  # Asegúrate de que esta línea está presente
+from celery.result import AsyncResult
+
+
+
 
 #------------------------------
 #   DASHBOARD
@@ -71,13 +73,13 @@ class GenerarExamenView(LoginRequiredMixin, TemplateView):
         user_exam, created = UserExam.objects.get_or_create(usuario=usuario, examen=examen)
 
         if created:
-            # Selección aleatoria de 200 preguntas
+            # Selección aleatoria de preguntas
             total_preguntas = Pregunta.objects.count()
-            preguntas_a_mostrar = min(10, total_preguntas)
+            preguntas_a_mostrar = min(200, total_preguntas)
             preguntas = list(Pregunta.objects.order_by('?')[:preguntas_a_mostrar])
             user_exam.preguntas.set(preguntas)
 
-        # Verificar si el tiempo de examen ha expirado
+        # Calcular tiempo restante
         now = timezone.now()
         tiempo_transcurrido = (now - user_exam.inicio).total_seconds()
         tiempo_restante = max(0, 3600 - tiempo_transcurrido)  # 1 hora en segundos
@@ -87,24 +89,18 @@ class GenerarExamenView(LoginRequiredMixin, TemplateView):
             user_exam.save()
             return redirect('dashboard_users:examen_expirado')
 
-        # Asegúrate de que preguntas no sea None antes de pasarlo al contexto
-        preguntas = user_exam.preguntas.all()
-        if preguntas is None:
-            preguntas = Pregunta.objects.none()  # Devuelve un queryset vacío si es None
-
         context = self.get_context_data(
             examen=examen,
             usuario=usuario,
-            preguntas=preguntas,
+            preguntas=user_exam.preguntas.all(),
             tiempo_restante=tiempo_restante
         )
         return self.render_to_response(context)
 
     def get_context_data(self, **kwargs):
-        # Usamos la forma sin argumentos de super() dentro de un método de instancia, lo cual es válido
-        context = super().get_context_data(**kwargs)  
-        preguntas = kwargs.get('preguntas', Pregunta.objects.none())  # Default to empty queryset
-        paginator = Paginator(preguntas, 20)  # Paginación con 20 preguntas por página
+        context = super().get_context_data(**kwargs)
+        preguntas = kwargs.get('preguntas', Pregunta.objects.none())
+        paginator = Paginator(preguntas, 20)
 
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
@@ -112,18 +108,39 @@ class GenerarExamenView(LoginRequiredMixin, TemplateView):
         context['page_obj'] = page_obj
         context['examen'] = kwargs.get('examen')
         context['usuario'] = kwargs.get('usuario')
-
-        # Asegurarse de que tiempo_restante no sea None antes de convertirlo a int
-        tiempo_restante = kwargs.get('tiempo_restante', 0)  # Default to 0 if None
+        tiempo_restante = kwargs.get('tiempo_restante', 0)
         context['tiempo_restante'] = int(tiempo_restante)
 
         return context
 
 
-
+    
     
 
 
+
+
+class ProgramarPreparacionExamenView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        examen_id = self.kwargs.get('examen_id')
+        examen = get_object_or_404(Examen, id=examen_id)
+        
+        # Programar la tarea de Celery para preparar los exámenes
+        task = preparar_examenes.apply_async((examen.id,), eta=examen.fecha_hora_inicio)
+        
+        return render(request, 'dashboard_users/preparacion_programada.html', {
+            'examen': examen,
+            'task_id': task.id
+        })
+
+
+class ExamenGenerandoView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard_users/examen_generando.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['task_id'] = self.kwargs.get('task_id')
+        return context
 
 class ExamenExpiradoView(TemplateView):
     template_name = 'dashboard_users/examen_expirado.html'

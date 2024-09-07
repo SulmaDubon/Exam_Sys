@@ -34,24 +34,28 @@ class InscripcionExamen(models.Model):
         return f"Inscripción de {self.usuario.username} en {self.examen.nombre}"
 
 class Pregunta(models.Model):
-    texto = models.CharField(max_length=255)  # Corrección: max_length en lugar de maxlength
-    respuesta_correcta = models.CharField(max_length=255)  # Corrección: max_length en lugar de maxlength
-    respuesta1 = models.CharField(max_length=255)  # Corrección: max_length en lugar de maxlength
-    respuesta2 = models.CharField(max_length=255)  # Corrección: max_length en lugar de maxlength
-    respuesta3 = models.CharField(max_length=255)  # Corrección: max_length en lugar de maxlength
-    respuesta4 = models.CharField(max_length=255)  # Corrección: max_length en lugar de maxlength
-
-    def __str__(self):
-        return self.texto
-
+    examen = models.ForeignKey(Examen, on_delete=models.CASCADE)  # Asegúrate de tener esta relación
+    texto = models.TextField()
+    respuesta1 = models.CharField(max_length=255)
+    respuesta2 = models.CharField(max_length=255)
+    respuesta3 = models.CharField(max_length=255)
+    respuesta4 = models.CharField(max_length=255)
+    respuesta_correcta = models.CharField(max_length=255)
 
 
 class UserExam(models.Model):
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
-    examen = models.ForeignKey(Examen, on_delete=models.CASCADE)
-    preguntas = models.ManyToManyField(Pregunta)
+    usuario = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE)
+    examen = models.ForeignKey('Examen', on_delete=models.CASCADE)
+    preguntas = models.ManyToManyField('Pregunta')
     inicio = models.DateTimeField(auto_now_add=True)
     finalizado = models.BooleanField(default=False)
-   
+    # Agrega el campo finalizacion para registrar cuándo termina el examen
+    finalizacion = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.finalizado and not self.finalizacion:
+            self.finalizacion = timezone.now()  # Registrar el momento de finalización
+        super(UserExam, self).save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.usuario.username} - {self.examen.nombre}"
+        return f'{self.usuario} - {self.examen}'

@@ -6,7 +6,7 @@ from django.views import View
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse
 from .models import Examen, Pregunta, InscripcionExamen, UserExam
 from django.contrib import messages
@@ -61,77 +61,62 @@ class CambiarContrasena(LoginRequiredMixin, View):
 #   EXAMEN
 #-----------------------------------------
 
+from django.http import HttpResponseForbidden
+
 class GenerarExamenView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard_users/examen.html'
 
-    def get(self, request, *args, **kwargs):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        examen_id = self.kwargs.get('examen_id')
+        examen = get_object_or_404(Examen, id=examen_id)
+
+        # Selección aleatoria de preguntas
+        total_preguntas = Pregunta.objects.filter(examen=examen).count()
+        preguntas_a_mostrar = min(10, total_preguntas)  # Mostrar hasta 10 preguntas al azar
+        preguntas = Pregunta.objects.filter(examen=examen).order_by('?')[:preguntas_a_mostrar]
+
+        paginator = Paginator(preguntas, 10)  # Paginación por página
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context['preguntas'] = page_obj
+        context['examen'] = examen
+        context['usuario'] = self.request.user
+
+        return context
+
+    def post(self, request, *args, **kwargs):
         examen_id = self.kwargs.get('examen_id')
         examen = get_object_or_404(Examen, id=examen_id)
         usuario = request.user
 
-        # Verificar si ya existe un examen para el usuario
-        user_exam, created = UserExam.objects.get_or_create(usuario=usuario, examen=examen)
+        # Verificar si el usuario ya tiene un examen iniciado
+        user_exam, created = UserExam.objects.get_or_create(
+            usuario=usuario,
+            examen=examen,
+            defaults={'inicio': timezone.now(), 'finalizacion': timezone.now() + timedelta(hours=3, minutes=30), 'finalizado': False}
+        )
 
         if created:
-            # Selección aleatoria de preguntas
-            total_preguntas = Pregunta.objects.count()
-            preguntas_a_mostrar = min(200, total_preguntas)
-            preguntas = list(Pregunta.objects.order_by('?')[:preguntas_a_mostrar])
-            user_exam.preguntas.set(preguntas)
+            user_exam.save()
 
-        # Calcular tiempo restante
-        now = timezone.now()
-        tiempo_transcurrido = (now - user_exam.inicio).total_seconds()
-        tiempo_restante = max(0, 3600 - tiempo_transcurrido)  # 1 hora en segundos
+        return redirect('examen_preguntas', examen_id=examen_id)
 
-        if tiempo_restante <= 0:
+    def post_enviar_examen(self, request, *args, **kwargs):
+        examen_id = self.kwargs.get('examen_id')
+        user_exam = get_object_or_404(UserExam, usuario=request.user, examen_id=examen_id)
+
+        # Verificar si user_exam.finalizacion no es None antes de la comparación
+        if user_exam.finalizacion and timezone.now() >= user_exam.finalizacion:
+            # Lógica para guardar respuestas y finalizar el examen
             user_exam.finalizado = True
             user_exam.save()
-            return redirect('dashboard_users:examen_expirado')
-
-        context = self.get_context_data(
-            examen=examen,
-            usuario=usuario,
-            preguntas=user_exam.preguntas.all(),
-            tiempo_restante=tiempo_restante
-        )
-        return self.render_to_response(context)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        preguntas = kwargs.get('preguntas', Pregunta.objects.none())
-        paginator = Paginator(preguntas, 20)
-
-        page_number = self.request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
-
-        context['page_obj'] = page_obj
-        context['examen'] = kwargs.get('examen')
-        context['usuario'] = kwargs.get('usuario')
-        tiempo_restante = kwargs.get('tiempo_restante', 0)
-        context['tiempo_restante'] = int(tiempo_restante)
-
-        return context
+            return redirect('examen_finalizado', examen_id=examen_id)
+        else:
+            return HttpResponseForbidden("El examen no ha terminado aún.")
 
 
-    
-    
-
-
-
-
-class ProgramarPreparacionExamenView(LoginRequiredMixin, View):
-    def get(self, request, *args, **kwargs):
-        examen_id = self.kwargs.get('examen_id')
-        examen = get_object_or_404(Examen, id=examen_id)
-        
-        # Programar la tarea de Celery para preparar los exámenes
-        task = preparar_examenes.apply_async((examen.id,), eta=examen.fecha_hora_inicio)
-        
-        return render(request, 'dashboard_users/preparacion_programada.html', {
-            'examen': examen,
-            'task_id': task.id
-        })
 
 
 class ExamenGenerandoView(LoginRequiredMixin, TemplateView):

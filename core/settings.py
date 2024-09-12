@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 import environ
 from django.contrib.messages import constants as messages
+import dj_database_url
 
 env= environ.Env()
 environ.Env.read_env()
@@ -10,9 +11,13 @@ environ.Env.read_env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
-DEBUG = os.environ.get('DEBUG')
+DEBUG = 'RENDER' not in os.environ
 
 ALLOWED_HOSTS = ['*']
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
@@ -40,7 +45,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',  # Eliminar en el desarrollo 
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Agregar whitenoise al principio
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -74,12 +79,18 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+
+if 'RENDER' in os.environ:
+    DATABASES = {
+        'default': dj_database_url.config(default=f'sqlite:///{BASE_DIR}/db.sqlite3')
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -110,20 +121,25 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']  # Asegúrate de que esta carpeta exista si tienes archivos estáticos
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Esta es la ruta donde collectstatic guardará los archivos
+
 
 # Default primary key field type
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Reemplaza 'smtp.example.com' con tu servidor SMTP
-EMAIL_PORT = 587  # Puerto SMTP (generalmente 587 para TLS/STARTTLS o 465 para SSL)
-EMAIL_USE_TLS = True  # Usar TLS para la conexión (True o False)
-EMAIL_HOST_USER = 'sulgeoturismo@gmail.com'  # Correo electrónico del remitente
-EMAIL_HOST_PASSWORD = 'dyvp yrrl nnal vvsf'  # Contraseña del correo electrónico del remitente
+if not DEBUG: 
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'  # Reemplaza 'smtp.example.com' con tu servidor SMTP
+    EMAIL_PORT = 587  # Puerto SMTP (generalmente 587 para TLS/STARTTLS o 465 para SSL)
+    EMAIL_USE_TLS = True  # Usar TLS para la conexión (True o False)
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 
 
 # Configuración de mensajes
@@ -141,19 +157,3 @@ LOGIN_URL = 'users:login'
 LOGIN_REDIRECT_URL = 'dashboard_users:dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
-# Configuración de Celery
-CELERY_BROKER_URL = 'amqp://guest:guest@localhost//'
-CELERY_RESULT_BACKEND = 'rpc://'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'America/Mexico_City'
-CELERY_WORKER_CONCURRENCY = 4
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-CELERY_WORKER_LOG_LEVEL = 'INFO'
-CELERY_WORKER_LOG_FILE = '/path/to/celery_worker.log'
-
-# Opcional: Rutas de Tareas
-CELERY_TASK_ROUTES = {
-    'myapp.tasks.add': {'queue': 'add_queue'},
-}

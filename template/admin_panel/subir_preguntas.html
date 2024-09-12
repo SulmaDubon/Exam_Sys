@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Subir Preguntas</title>
+    <style>
+        /* Aquí puedes incluir el estilo que desees */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Subir Preguntas desde Excel</h1>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="file" name="archivo" accept=".xlsx" required>
+            <button type="submit">Subir</button>
+        </form>
+        {% if form.errors %}
+            <p style="color: red;">{{ form.errors }}</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -31,20 +31,19 @@ class ResultadoForm(forms.ModelForm):
 
 class PreguntaForm(forms.ModelForm):
     respuesta_correcta = forms.ChoiceField(
-        choices=[('1', 'Respuesta 1'), ('2', 'Respuesta 2'), ('3', 'Respuesta 3'), ('4', 'Respuesta 4')],
+        choices=[('1', 'Respuesta 1'), ('2', 'Respuesta 2'), ('3', 'Respuesta 3')],
         widget=forms.RadioSelect,
         label='Marque la correcta'
     )
 
     class Meta:
         model = Pregunta
-        fields = ['texto', 'respuesta1', 'respuesta2', 'respuesta3', 'respuesta4', 'respuesta_correcta', 'orden']
+        fields = ['texto', 'respuesta1', 'respuesta2', 'respuesta3', 'respuesta_correcta', 'orden']
         labels = {
             'texto': 'Texto de la Pregunta',
             'respuesta1': 'Respuesta 1',
             'respuesta2': 'Respuesta 2',
             'respuesta3': 'Respuesta 3',
-            'respuesta4': 'Respuesta 4',
             'orden': 'Orden de visualización'
         }
 
@@ -56,6 +55,14 @@ class PreguntaForm(forms.ModelForm):
             self.add_error('respuesta_correcta', 'Debe seleccionar la respuesta correcta.')
 
         return cleaned_data
+    
+
+class SubirPreguntasForm(forms.Form):
+    archivo = forms.FileField(label='Archivo Excel', required=True)
+
+
+
+
 
 
 

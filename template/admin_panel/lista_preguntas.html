@@ -68,12 +68,38 @@
         .actions a:hover {
             color: #0056b3;
         }
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .pagination span {
+            display: inline-block;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 0 5px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .pagination a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        .pagination a:hover {
+            color: #0056b3;
+        }
+        .pagination .current {
+            background-color: #007bff;
+            color: #fff;
+            border: 1px solid #007bff;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Lista de Preguntas</h1>
-        <a href="{% url 'admin_panel:crear_pregunta' %}" class="button">Crear Pregunta</a>
+        <a href="{% url 'admin_panel:crear_pregunta' %}" class="btn btn-primary">Añadir Pregunta</a>
+        <a href="{% url 'admin_panel:subir_preguntas' %}" class="button">Subir Preguntas</a>
         <table>
             <thead>
                 <tr>
@@ -105,6 +131,21 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <!-- Navegación de Paginación -->
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">&laquo; Primera</a>
+                <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            {% endif %}
+
+            <span class="current">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
+            {% endif %}
+        </div>
     </div>
 </body>
 </html>

@@ -1,13 +1,15 @@
 # admin_panel/views.py
+from django.forms import formset_factory
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
+import pandas as pd
 from users.models import CustomUser
 from dashboard_users.models import Examen, Pregunta
-from dashboard_users.forms import ExamenForm, PreguntaForm   # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.forms import ExamenForm, PreguntaForm, SubirPreguntasForm   # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
@@ -15,6 +17,10 @@ from datetime import datetime
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.urls import reverse
+from django.db.models import Max
+from django.views.generic.edit import FormView
+from django.views.generic.edit import FormView
+
 
 # from .decorators import es_admin
 
@@ -199,25 +205,32 @@ class UsuariosInscritosView(DetailView):
 #      PREGUNTAS
 #------------------------------------------------------------------------------
 
-
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class ListaPreguntas(ListView):
     model = Pregunta
     template_name = 'admin_panel/lista_preguntas.html'
     context_object_name = 'preguntas'
+    paginate_by = 10  # Número de preguntas por página
 
     def get_queryset(self):
         return Pregunta.objects.all().order_by('orden')
-    
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
-class CrearPregunta(CreateView):
-    model = Pregunta
-    form_class = PreguntaForm
-    template_name = 'admin_panel/formulario_pregunta.html'
 
-    def get_success_url(self):
-        return reverse_lazy('admin_panel:lista_preguntas')
+class CrearPreguntasView(FormView):
+    template_name = 'admin_panel/formulario_pregunta.html'
+    form_class = PreguntaForm
+    success_url = reverse_lazy('admin_panel:lista_preguntas')
+
+    def form_valid(self, form):
+        # Asignar el orden automáticamente
+        max_orden = Pregunta.objects.aggregate(Max('orden'))['orden__max'] or 0
+        pregunta = form.save(commit=False)
+        pregunta.orden = max_orden + 1
+        pregunta.save()
+        return super().form_valid(form)
+
+
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class EditarPregunta(UpdateView):
@@ -235,6 +248,44 @@ class EliminarPregunta(DeleteView):
 
     def get_success_url(self):
         return reverse_lazy('admin_panel:lista_preguntas')
+
+
+def subir_preguntas(request):
+    if request.method == 'POST':
+        form = SubirPreguntasForm(request.POST, request.FILES)
+        if form.is_valid():
+            excel_file = request.FILES['archivo']
+            try:
+                df = pd.read_excel(excel_file)
+                print("Columnas en el DataFrame:", df.columns)  # Línea de depuración
+                print("Primeras filas del DataFrame:", df.head())  # Línea de depuración
+
+                # Verifica si las columnas necesarias existen
+                required_columns = ['texto', 'respuesta_correcta', 'respuesta1', 'respuesta2', 'respuesta3']
+                if not all(column in df.columns for column in required_columns):
+                    raise ValueError("El archivo Excel debe contener las columnas: 'texto', 'respuesta_correcta', 'respuesta1', 'respuesta2', 'respuesta3'")
+
+                # Asignar el orden automáticamente
+                max_orden = Pregunta.objects.aggregate(Max('orden'))['orden__max'] or 0
+
+                for _, row in df.iterrows():
+                    Pregunta.objects.create(
+                        texto=row['texto'],
+                        respuesta_correcta=row['respuesta_correcta'],
+                        respuesta1=row['respuesta1'],
+                        respuesta2=row['respuesta2'],
+                        respuesta3=row['respuesta3'],
+                        orden=max_orden + 1
+                    )
+                    max_orden += 1
+
+                return redirect(reverse('admin_panel:lista_preguntas'))
+            except Exception as e:
+                form.add_error(None, f"Error procesando el archivo: {str(e)}")
+    else:
+        form = SubirPreguntasForm()
+    return render(request, 'admin_panel/subir_preguntas.html', {'form': form})
+
 
 #------------------------------------------------
 #   ACCIONES

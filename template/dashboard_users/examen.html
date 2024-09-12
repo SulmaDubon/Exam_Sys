@@ -1,51 +1,77 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ examen.nombre }}</h1>
-
-{% if error %}
-    <p>{{ error }}</p>
-{% elif cuenta_regresiva %}
-    <p>{{ mensaje }} {{ cuenta_regresiva }} segundos</p>
-{% else %}
-    <p>Tiempo restante: {{ tiempo_restante }} segundos</p>
-
-    <form method="post">
-        {% csrf_token %}
-        {% for pregunta in preguntas %}
-            <div>
-                <p>{{ pregunta.texto }}</p>
-                <ul>
-                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="1">{{ pregunta.respuesta1 }}</li>
-                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="2">{{ pregunta.respuesta2 }}</li>
-                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="3">{{ pregunta.respuesta3 }}</li>
-                    <li><input type="radio" name="respuesta_{{ pregunta.id }}" value="4">{{ pregunta.respuesta4 }}</li>
-                </ul>
-            </div>
-        {% endfor %}
-
-        <button type="submit">Enviar</button>
-    </form>
-
-    <div>
-        <span>Paginas:</span>
-        <div class="pagination">
-            <span class="step-links">
-                {% if page_obj.has_previous %}
-                    <a href="?page=1">&laquo; first</a>
-                    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
-                {% endif %}
-
-                <span class="current">
-                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
-                </span>
-
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}">next</a>
-                    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
-                {% endif %}
-            </span>
-        </div>
+  <h1>Examen: {{ examen.nombre }}</h1>
+  <p>Usuario: {{ usuario.username }}</p>
+  <p>Cédula: {{ usuario.profile.cedula }}</p> <!-- Asume que tienes un perfil de usuario con cédula -->
+  <p>Correo: {{ usuario.email }}</p>
+  <p>Tiempo restante: <span id="tiempo-restante">{{ tiempo_restante }}</span> segundos</p>
+  
+  <form method="post" action="{% url 'dashboard_users:submit_examen' examen.id %}">
+    {% csrf_token %}
+    
+    <ol style="list-style-type: decimal; padding-left: 20px;">
+      {% for pregunta in preguntas %}
+        <li style="margin-bottom: 30px;">
+          <p style="margin-bottom: 10px;">{{ pregunta.texto }}</p>
+          <div style="padding-left: 20px;">
+            <label style="display: block; margin-bottom: 10px;">
+              <input type="radio" name="pregunta_{{ pregunta.id }}" value="1">
+              {{ pregunta.respuesta1 }}
+            </label>
+            <label style="display: block; margin-bottom: 10px;">
+              <input type="radio" name="pregunta_{{ pregunta.id }}" value="2">
+              {{ pregunta.respuesta2 }}
+            </label>
+            <label style="display: block; margin-bottom: 10px;">
+              <input type="radio" name="pregunta_{{ pregunta.id }}" value="3">
+              {{ pregunta.respuesta3 }}
+            </label>
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+    
+    <div style="text-align: center; margin-top: 20px;">
+      <button type="submit" style="padding: 10px 20px; background-color: #007bff; color: #fff; border: none; border-radius: 5px; cursor: pointer;">
+        Enviar examen
+      </button>
     </div>
-{% endif %}
+  </form>
+
+  <div style="text-align: center; margin-top: 20px;">
+    <span>
+      {% if page_obj.has_previous %}
+        <a href="?page=1">&laquo; Primera</a>
+        <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+      {% endif %}
+
+      Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}.
+
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
+      {% endif %}
+    </span>
+  </div>
+
+  <script>
+    // Función para actualizar el tiempo restante
+    function actualizarTiempoRestante() {
+      const tiempoRestante = document.getElementById('tiempo-restante');
+      let tiempo = parseInt(tiempoRestante.textContent);
+
+      if (tiempo > 0) {
+        tiempo--;
+        tiempoRestante.textContent = tiempo;
+        setTimeout(actualizarTiempoRestante, 1000); // Actualizar cada segundo
+      } else {
+        // Enviar el formulario automáticamente cuando el tiempo se agote
+        document.querySelector('form').submit();
+      }
+    }
+
+    // Iniciar el cronómetro
+    actualizarTiempoRestante();
+  </script>
 {% endblock %}

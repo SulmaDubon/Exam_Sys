@@ -2,22 +2,20 @@
 
 from django.shortcuts import render, redirect
 from django.views import View
-from django.views.generic import CreateView, TemplateView
+from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect
-from django.urls import reverse, reverse_lazy
-from django.utils.decorators import method_decorator
-from .models import Examen, Pregunta, InscripcionExamen
-from .forms import ExamenForm
+from django.urls import reverse
+from .models import Examen, Pregunta, InscripcionExamen, UserExam
 from django.contrib import messages
 from django.utils import timezone
-import random
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import CambiarContrasenaForm
-from datetime import datetime, timedelta 
-import pytz 
+from datetime import timedelta 
+from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
+
 
 #------------------------------
 #   DASHBOARD
@@ -60,43 +58,46 @@ class CambiarContrasena(LoginRequiredMixin, View):
 #   EXAMEN
 #-----------------------------------------
 
-class GenerarExamenView(LoginRequiredMixin, TemplateView):
+class GenerarExamenView(TemplateView):
     template_name = 'dashboard_users/examen.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         examen_id = self.kwargs.get('examen_id')
         examen = get_object_or_404(Examen, id=examen_id)
-        now = timezone.now()
+        usuario = self.request.user
 
-        # Comentar estas líneas para omitir el requisito de fecha y hora
-        local_tz = now.tzinfo
-        inicio_examen = datetime.combine(examen.fecha, examen.hora).replace(tzinfo=local_tz)
-        fin_acceso = inicio_examen + timedelta(minutes=15)
-        fin_examen = inicio_examen + timedelta(hours=1)
+        # Verifica si ya tiene un examen generado
+        user_exam, created = UserExam.objects.get_or_create(
+            usuario=usuario,
+            examen=examen,
+            defaults={'inicio': timezone.now()}
+        )
 
-        if inicio_examen <= now <= fin_acceso:
-            tiempo_restante = (fin_examen - now).total_seconds()
-
-            # Selección aleatoria de preguntas
-            total_preguntas = Pregunta.objects.filter(examen=examen).count()
-            preguntas_a_mostrar = min(10, total_preguntas)  # Mostrar hasta 10 preguntas al azar
-            preguntas = Pregunta.objects.filter(examen=examen).order_by('?')[:preguntas_a_mostrar]
-
-            paginator = Paginator(preguntas, 10)  # Paginación por página
-            page_number = self.request.GET.get('page')
-            page_obj = paginator.get_page(page_number)
-
-            context['preguntas'] = page_obj
-            context['examen'] = examen
-            context['usuario'] = self.request.user
-            context['tiempo_restante'] = int(tiempo_restante)
-        elif now < inicio_examen:
-            context['cuenta_regresiva'] = int((inicio_examen - now).total_seconds())
-            context['mensaje'] = 'El examen estará disponible en:'
+        # Selección de 260 preguntas al azar
+        if created:
+            preguntas = Pregunta.objects.order_by('?')[:260]
+            user_exam.preguntas.set(preguntas)
         else:
-            context['error'] = 'El tiempo de acceso al examen ha expirado.'
+            # Actualiza el tiempo restante
+            tiempo_maximo = 3 * 60 * 60  # 3 horas en segundos
+            tiempo_transcurrido = (timezone.now() - user_exam.inicio).total_seconds()
+            if tiempo_transcurrido >= tiempo_maximo:
+                # Marca el examen como finalizado si el tiempo se agotó
+                user_exam.examen_finalizado()
+                return redirect('dashboard_users:dashboard')  # Redirige al dashboard
 
+        # Paginación
+        page_number = self.request.GET.get('page', 1)  # Página actual
+        paginator = Paginator(user_exam.preguntas.all(), 20)  # 20 preguntas por página
+        page_obj = paginator.get_page(page_number)
+
+        context['examen'] = examen
+        context['usuario'] = usuario
+        context['preguntas'] = page_obj
+        context['paginator'] = paginator
+        context['page_obj'] = page_obj
+        context['tiempo_restante'] = int(max(0, 3 * 60 * 60 - (timezone.now() - user_exam.inicio).total_seconds()))
         return context
 
 
@@ -121,9 +122,9 @@ class SubmitExamenView(LoginRequiredMixin, View):
         resultado = f"Puntaje: {puntaje}/{total_preguntas}"
         inscripcion.resultado = resultado
         inscripcion.save()
-        messages.success(request, resultado)
-        return redirect('dashboard_users:resultados')
 
+        messages.success(request, "El examen se ha enviado exitosamente.")
+        return redirect('dashboard_users:dashboard')
 
 #---------------------------------
 # INSCRIPCION

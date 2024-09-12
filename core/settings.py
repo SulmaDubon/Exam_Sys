@@ -122,7 +122,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']  # Asegúrate de que esta carpeta exista si tienes archivos estáticos
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # Esta es la ruta donde collectstatic guardará los archivos
 
 
@@ -138,7 +137,7 @@ if not DEBUG:
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    
 
 
 

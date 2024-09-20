@@ -218,7 +218,7 @@ class ListaPreguntas(ListView):
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 
 class CrearPreguntasView(FormView):
-    template_name = 'admin_panel/formulario_pregunta.html'
+    template_name = 'admin_panel/formulario_preguntas.html'
     form_class = PreguntaForm
     success_url = reverse_lazy('admin_panel:lista_preguntas')
 

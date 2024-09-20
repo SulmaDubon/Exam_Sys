@@ -130,7 +130,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'  # Esta es la ruta donde collectstatic gu
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 if not DEBUG: 
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = 'smtp.gmail.com'  # Reemplaza 'smtp.example.com' con tu servidor SMTP
     EMAIL_PORT = 587  # Puerto SMTP (generalmente 587 para TLS/STARTTLS o 465 para SSL)
     EMAIL_USE_TLS = True  # Usar TLS para la conexión (True o False)

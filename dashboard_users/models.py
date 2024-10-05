@@ -2,18 +2,107 @@
 from django.db import models
 from django.utils import timezone
 from users.models import CustomUser
-from django.contrib.auth import get_user_model
 
+# Función para devolver la hora por defecto del examen
+def default_exam_time():
+    return timezone.now().time()
+
+# --------------- CONFIGURACION TIPO DE EXAMEN---------------
+class TipoExamen(models.Model):
+    nombre = models.CharField(max_length=255, unique=True)
+    tiempo_limite = models.PositiveIntegerField(help_text="Tiempo límite en minutos")
+    
+    def total_preguntas(self):
+        """Devuelve la suma total de preguntas de todos los módulos asociados a este tipo de examen."""
+        return sum(modulo.cantidad_preguntas for modulo in self.modulos.all())
+
+    def __str__(self):
+        return self.nombre
+
+class Modulo(models.Model):
+    nombre = models.CharField(max_length=255)
+    cantidad_preguntas = models.PositiveIntegerField()
+    tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='modulos')
+
+    def __str__(self):
+        return f"{self.nombre} - {self.cantidad_preguntas} preguntas"
+
+#-------------------- AGENDA EXAMEN --------------------------------
 
 class Examen(models.Model):
     nombre = models.CharField(max_length=255, verbose_name="Nombre del examen")
-    fecha = models.DateField()
-    hora = models.TimeField()
+    fecha = models.DateField(default=timezone.now)
+    hora = models.TimeField(default=default_exam_time)
     usuarios = models.ManyToManyField(CustomUser, through='InscripcionExamen')
+    tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='examenes')  # Relación con TipoExamen
+    aprobacion_minima = models.FloatField(default=6.0, verbose_name="Nota mínima para aprobar")
+
+    def obtener_tiempo_limite(self):
+        """Devuelve el tiempo límite del examen en formato HH:MM basado en el tipo de examen."""
+        tiempo_limite = self.tipo_examen.tiempo_limite  # Tiempo límite en minutos desde TipoExamen
+        horas = tiempo_limite // 60
+        minutos = tiempo_limite % 60
+        return f"{horas:02}:{minutos:02}"
 
     def __str__(self):
-        return f"Examen el {self.fecha} a las {self.hora}"
+        return f"{self.tipo_examen.nombre}: Examen el {self.fecha} a las {self.hora}"
+
+#------------------- PREGUNTA ----------------------------------------
+
+class Pregunta(models.Model):
+    texto = models.TextField()  # El texto de la pregunta o enunciado
+    activo = models.BooleanField(default=True)
+    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='preguntas')  # Asociar a módulo
+    enunciado = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='preguntas_relacionadas'
+    )  # Relación para preguntas anidadas
+
+    def es_enunciado(self):
+        """Determina si la pregunta es un enunciado (sin estar relacionada a otro enunciado)."""
+        return self.enunciado is None
+
+    def __str__(self):
+        if self.es_enunciado():
+            return f"Enunciado: {self.texto} (Módulo: {self.modulo.nombre})"
+        else:
+            return f"Pregunta: {self.texto} (Módulo: {self.modulo.nombre})"
+
+#----------------------- RESPUESTAS ----------------------------
+
+class Respuesta(models.Model):
+    LETRA_CHOICES = [
+        ('A', 'A'),
+        ('B', 'B'),
+        ('C', 'C'),
+    ]
+
+    pregunta = models.ForeignKey(Pregunta, on_delete=models.CASCADE, related_name='respuestas')
+    texto = models.CharField(max_length=255)
+    es_correcta = models.BooleanField(default=False)
+    letra = models.CharField(max_length=1, choices=LETRA_CHOICES, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.letra:
+            # Obtener el número de respuestas existentes para la pregunta
+            numero_respuestas = Respuesta.objects.filter(pregunta=self.pregunta).count()
+
+            # Asignar letra secuencialmente (A, B o C)
+            if numero_respuestas < 3:
+                self.letra = ['A', 'B', 'C'][numero_respuestas]
+            else:
+                raise ValueError("No se pueden agregar más de tres respuestas a una pregunta.")
+        
+        super().save(*args, **kwargs)  # Guardar la respuesta
+
+    def __str__(self):
+        return f"Respuesta {self.letra}: {self.texto} (Correcta: {self.es_correcta})"
     
+
+#----------------------- INSCRIPCION ----------------------------------
 
 class InscripcionExamen(models.Model):
     usuario = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -24,53 +113,50 @@ class InscripcionExamen(models.Model):
     def __str__(self):
         return f"Inscripción de {self.usuario.username} en {self.examen.nombre}"
 
-
-class Pregunta(models.Model):
-    texto = models.TextField()
-    respuesta1 = models.CharField(max_length=255)
-    respuesta2 = models.CharField(max_length=255)
-    respuesta3 = models.CharField(max_length=255)
-    respuesta_correcta = models.CharField(max_length=1, choices=[
-        ('1', 'Respuesta 1'),
-        ('2', 'Respuesta 2'),
-        ('3', 'Respuesta 3')])
-    orden = models.IntegerField()
-
-    def __str__(self):
-        return self.texto
-
-
-
+#------------------- USEREXAM -----------------------------------------
 class UserExam(models.Model):
     usuario = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    examen = models.ForeignKey('Examen', on_delete=models.CASCADE)
-    preguntas = models.ManyToManyField('Pregunta')
+    examen = models.ForeignKey(Examen, on_delete=models.CASCADE)
+    preguntas = models.ManyToManyField(Pregunta)
     inicio = models.DateTimeField(auto_now_add=True)
     finalizado = models.BooleanField(default=False)
     fecha_envio = models.DateTimeField(null=True, blank=True)
-    respuestas = models.JSONField(default=dict)  # Guardar las respuestas del examen
+    respuestas = models.JSONField(default=dict)
+    nota = models.FloatField(null=True, blank=True)
+    estado = models.CharField(max_length=10, choices=[('Aprobado', 'Aprobado'), ('Reprobado', 'Reprobado')], null=True, blank=True)
 
     def tiempo_restante(self):
-        """Calcula el tiempo restante en formato de horas y minutos."""
-        tiempo_maximo = 3 * 60 * 60  # 3 horas en segundos
+        """Calcula el tiempo restante en horas y minutos usando la zona horaria correcta."""
+        tiempo_maximo = self.examen.tipo_examen.tiempo_limite * 60  # Convertir a segundos
         tiempo_transcurrido = (timezone.now() - self.inicio).total_seconds()
         tiempo_restante = max(0, tiempo_maximo - tiempo_transcurrido)
-        horas_restantes = int(tiempo_restante // 3600)
-        minutos_restantes = int((tiempo_restante % 3600) // 60)
-        return f"{horas_restantes:02}:{minutos_restantes:02}"
+        horas_restantes = tiempo_restante // 3600
+        minutos_restantes = (tiempo_restante % 3600) // 60
+        return f"{int(horas_restantes):02}:{int(minutos_restantes):02}"
 
     def examen_finalizado(self):
         """Marca el examen como finalizado."""
-        self.finalizado = True
-        self.fecha_envio = timezone.now()
+        if not self.finalizado:
+            self.finalizado = True
+            self.fecha_envio = timezone.now()
+            self.save()
+
+    def calcular_nota(self):
+        """Calcula y asigna la nota del examen basado en las respuestas correctas de forma más eficiente."""
+        total_preguntas = self.preguntas.count()
+        if total_preguntas > 0:
+            preguntas = self.preguntas.prefetch_related('respuestas')
+            respuestas_correctas = 0
+
+            # Comprobar respuestas correctas de manera más eficiente
+            for pregunta in preguntas:
+                respuesta_usuario = self.respuestas.get(str(pregunta.id), None)
+                if respuesta_usuario and pregunta.respuestas.filter(es_correcta=True, texto=respuesta_usuario).exists():
+                    respuestas_correctas += 1
+
+            # Calcular la nota en porcentaje
+            self.nota = (respuestas_correctas / total_preguntas) * 100
+        else:
+            self.nota = 0
         self.save()
-
-    
-
-class ExclusionPregunta(models.Model):
-    examen = models.ForeignKey(Examen, on_delete=models.CASCADE)
-    pregunta = models.ForeignKey(Pregunta, on_delete=models.CASCADE)
-    excluida = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"{self.pregunta} excluida de {self.examen}" if self.excluida else f"{self.pregunta} incluida en {self.examen}"
+        self.actualizar_estado()

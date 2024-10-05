@@ -7,7 +7,40 @@
     <h1>Formulario de Pregunta</h1>
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
+        
+        <!-- Pregunta o enunciado principal -->
+        <div class="form-group">
+            {{ form.as_p }}
+        </div>
+
+        <!-- Si la pregunta tiene un enunciado asociado, mostramos las preguntas derivadas -->
+        {% if form.cleaned_data.enunciado %}
+            <h3>Preguntas derivadas</h3>
+            {{ pregunta_formset.management_form }}
+            {% for pregunta_form in pregunta_formset %}
+                <div class="form-group pregunta-derivada">
+                    {{ pregunta_form.as_p }} <!-- Formulario para cada pregunta derivada -->
+                    <h4>Respuestas</h4>
+                    {{ respuesta_formset_list.forloop.counter0.management_form }}
+                    {% for respuesta_form in respuesta_formset_list.forloop.counter0 %}
+                        <div class="respuesta-group">
+                            {{ respuesta_form.as_p }} <!-- Respuestas para la pregunta derivada -->
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <!-- Si no hay enunciado, mostramos las respuestas de la pregunta independiente -->
+            <h4>Respuestas</h4>
+            {{ formset.management_form }}
+            {% for respuesta_form in formset %}
+                <div class="respuesta-group">
+                    {{ respuesta_form.as_p }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Botones de guardar y cancelar -->
         <div class="button-container">
             <button type="submit" class="btn btn-primary">Guardar</button>
             <a href="{% url 'admin_panel:lista_preguntas' %}" class="btn btn-secondary">Cancelar</a>
@@ -20,7 +53,7 @@
 <style>
     .admin-container {
         padding: 20px;
-        max-width: 600px;
+        max-width: 800px;
         margin: auto;
         background-color: #fff;
         border-radius: 8px;

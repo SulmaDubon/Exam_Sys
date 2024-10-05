@@ -11,10 +11,9 @@ from .models import Examen, Pregunta, InscripcionExamen, UserExam
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .forms import CambiarContrasenaForm
-from datetime import timedelta 
-from django.contrib.auth import get_user_model
+from .forms import CambiarContrasenaForm, InscripcionExamenForm
 from django.core.paginator import Paginator
+from django.db.models import Q
 
 
 #------------------------------
@@ -135,22 +134,30 @@ class InscripcionExamenView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        now = timezone.now()
-        context['examenes'] = Examen.objects.filter(fecha__gt=now.date()) | Examen.objects.filter(fecha=now.date(), hora__gt=now.time())
+        # Pasar el formulario con el usuario actual
+        context['form'] = InscripcionExamenForm(user=self.request.user)
         return context
 
     def post(self, request, *args, **kwargs):
-        examen_id = request.POST.get('examen_id')
-        examen = get_object_or_404(Examen, id=examen_id)
-        inscripcion, created = InscripcionExamen.objects.get_or_create(usuario=request.user, examen=examen)
-        if created:
-            messages.success(request, 'Te has inscrito exitosamente al examen.')
+        # Pasar el usuario al formulario para manejar la lógica de validación
+        form = InscripcionExamenForm(request.POST, user=request.user)
+        if form.is_valid():
+            examen = form.cleaned_data['examen']
+            inscripcion, created = InscripcionExamen.objects.get_or_create(usuario=request.user, examen=examen)
+
+            if created:
+                messages.success(request, 'Te has inscrito exitosamente al examen.')
+            else:
+                messages.info(request, 'Ya estás inscrito en este examen.')
+
+            # Redirigir al dashboard después de la inscripción
+            return HttpResponseRedirect(reverse('dashboard_users:dashboard'))
         else:
-            messages.info(request, 'Ya estás inscrito en este examen.')
-        return HttpResponseRedirect(reverse('dashboard_users:dashboard'))
-
-
-
+            # Mostrar mensaje de error en caso de un formulario inválido
+            messages.error(request, 'Ha ocurrido un error al inscribirte en el examen.')
+            # Renderizar la misma página con el formulario inválido y sus errores
+            return self.render_to_response(self.get_context_data(form=form))
+        
 #------------------------------
 #   Resultados
 #------------------------------

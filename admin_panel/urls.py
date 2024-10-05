@@ -16,7 +16,8 @@ from .views import (
     EditarPregunta,
     EliminarPregunta,
     AccionesExamenesView,
-    subir_preguntas,  # Asegúrate de importar la vista
+    subir_preguntas, 
+    crear_tipo_examen     
 )
 
 app_name = 'admin_panel'
@@ -39,4 +40,5 @@ urlpatterns = [
     path('preguntas/eliminar/<int:pk>/', EliminarPregunta.as_view(), name='eliminar_pregunta'),
     path('preguntas/subir/', subir_preguntas, name='subir_preguntas'),  # Añadir esta línea para la vista de subir preguntas
     path('examenes/acciones/', AccionesExamenesView.as_view(), name='acciones_examenes'),
+    path('crear-tipo-examen/', crear_tipo_examen, name='crear_tipo_examen'),
 ]

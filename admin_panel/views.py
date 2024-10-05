@@ -1,5 +1,5 @@
 # admin_panel/views.py
-from django.forms import formset_factory
+from django.forms import ValidationError, formset_factory
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
@@ -8,8 +8,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 import pandas as pd
 from users.models import CustomUser
-from dashboard_users.models import Examen, Pregunta
-from dashboard_users.forms import ExamenForm, PreguntaForm, SubirPreguntasForm   # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen
+from dashboard_users.forms import ExamenForm, PreguntaDerivadaFormSet, PreguntaForm, SubirPreguntasForm, TipoExamenForm, ModuloFormSet, RespuestaFormSet   # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
@@ -18,7 +18,6 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.urls import reverse
 from django.db.models import Max
-from django.views.generic.edit import FormView
 from django.views.generic.edit import FormView
 
 
@@ -135,15 +134,24 @@ class ListaExamenes(ListView):
         context = super().get_context_data(**kwargs)
         current_year = datetime.now().year
         current_month = datetime.now().month
+
+        # Obtener valores de los parámetros GET o asignar por defecto el año y mes actuales
+        selected_year = self.request.GET.get('year', current_year)
+        selected_month = self.request.GET.get('month', current_month)
+
+        # Crear listas de años y meses para el filtrado
         year_list = list(range(current_year - 5, current_year + 5))
         month_list = [
             {'value': i, 'name': datetime(1900, i, 1).strftime('%B')}
             for i in range(1, 13)
         ]
+
+        # Actualizar el contexto con los datos necesarios
         context['year_list'] = year_list
         context['month_list'] = month_list
-        context['current_year'] = self.request.GET.get('year')
-        context['current_month'] = self.request.GET.get('month')
+        context['current_year'] = int(selected_year)  # Asegurarse de que sean enteros
+        context['current_month'] = int(selected_month)
+
         return context
 
 # Vista para crear un nuevo examen
@@ -213,23 +221,55 @@ class ListaPreguntas(ListView):
     paginate_by = 10  # Número de preguntas por página
 
     def get_queryset(self):
-        return Pregunta.objects.all().order_by('orden')
+        # Obtener todas las preguntas con sus respuestas relacionadas
+        return Pregunta.objects.prefetch_related('respuestas').order_by('id')
+        
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 
 class CrearPreguntasView(FormView):
-    template_name = 'admin_panel/formulario_pregunta.html'
+    template_name = 'admin_panel/formulario_preguntas.html'
     form_class = PreguntaForm
     success_url = reverse_lazy('admin_panel:lista_preguntas')
 
-    def form_valid(self, form):
-        # Asignar el orden automáticamente
-        max_orden = Pregunta.objects.aggregate(Max('orden'))['orden__max'] or 0
-        pregunta = form.save(commit=False)
-        pregunta.orden = max_orden + 1
-        pregunta.save()
-        return super().form_valid(form)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.POST:
+            context['formset'] = RespuestaFormSet(self.request.POST)
+            context['pregunta_formset'] = PreguntaDerivadaFormSet(self.request.POST)
+        else:
+            context['formset'] = RespuestaFormSet()
+            context['pregunta_formset'] = PreguntaDerivadaFormSet()
+        return context
 
+    def form_valid(self, form):
+        formset = RespuestaFormSet(self.request.POST)
+        pregunta_formset = PreguntaDerivadaFormSet(self.request.POST)
+        
+        if form.is_valid():
+            pregunta = form.save()
+            # Si la pregunta tiene un enunciado, guardamos las preguntas derivadas
+            if pregunta.enunciado:
+                if pregunta_formset.is_valid():
+                    preguntas_derivadas = pregunta_formset.save(commit=False)
+                    for pregunta_derivada in preguntas_derivadas:
+                        pregunta_derivada.enunciado = pregunta
+                        pregunta_derivada.save()
+                        # Guardar respuestas para las preguntas derivadas
+                        for respuesta_formset in RespuestaFormSet(self.request.POST, instance=pregunta_derivada):
+                            if respuesta_formset.is_valid():
+                                respuestas = respuesta_formset.save(commit=False)
+                                for respuesta in respuestas:
+                                    respuesta.pregunta = pregunta_derivada
+                                    respuesta.save()
+            else:
+                if formset.is_valid():
+                    formset.instance = pregunta
+                    formset.save()
+            
+            return super().form_valid(form)
+        else:
+            return self.form_invalid(form)
 
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -238,8 +278,45 @@ class EditarPregunta(UpdateView):
     form_class = PreguntaForm
     template_name = 'admin_panel/formulario_pregunta.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.POST:
+            context['formset'] = RespuestaFormSet(self.request.POST, instance=self.object)
+            context['pregunta_formset'] = PreguntaDerivadaFormSet(self.request.POST, instance=self.object)
+        else:
+            context['formset'] = RespuestaFormSet(instance=self.object)
+            context['pregunta_formset'] = PreguntaDerivadaFormSet(instance=self.object)
+        return context
+
+    def form_valid(self, form):
+        formset = RespuestaFormSet(self.request.POST, instance=self.object)
+        pregunta_formset = PreguntaDerivadaFormSet(self.request.POST, instance=self.object)
+
+        if form.is_valid():
+            pregunta = form.save()
+            # Si la pregunta tiene un enunciado, actualizamos las preguntas derivadas
+            if pregunta.enunciado:
+                if pregunta_formset.is_valid():
+                    preguntas_derivadas = pregunta_formset.save(commit=False)
+                    for pregunta_derivada in preguntas_derivadas:
+                        pregunta_derivada.enunciado = pregunta
+                        pregunta_derivada.save()
+                        # Guardar respuestas para las preguntas derivadas
+                        for respuesta_formset in RespuestaFormSet(self.request.POST, instance=pregunta_derivada):
+                            if respuesta_formset.is_valid():
+                                respuesta_formset.save()
+            else:
+                if formset.is_valid():
+                    formset.save()
+            
+            return super().form_valid(form)
+        else:
+            return self.form_invalid(form)
+
     def get_success_url(self):
         return reverse_lazy('admin_panel:lista_preguntas')
+
+
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class EliminarPregunta(DeleteView):
@@ -257,26 +334,30 @@ def subir_preguntas(request):
             excel_file = request.FILES['archivo']
             try:
                 df = pd.read_excel(excel_file)
-                print("Columnas en el DataFrame:", df.columns)  # Línea de depuración
-                print("Primeras filas del DataFrame:", df.head())  # Línea de depuración
 
-                # Verifica si las columnas necesarias existen
                 required_columns = ['texto', 'respuesta_correcta', 'respuesta1', 'respuesta2', 'respuesta3']
-                if not all(column in df.columns for column in required_columns):
-                    raise ValueError("El archivo Excel debe contener las columnas: 'texto', 'respuesta_correcta', 'respuesta1', 'respuesta2', 'respuesta3'")
+                if 'enunciado' in df.columns:
+                    required_columns.append('enunciado')
 
-                # Asignar el orden automáticamente
+                if not all(column in df.columns for column in required_columns):
+                    raise ValidationError("El archivo Excel debe contener las columnas correctas.")
+
                 max_orden = Pregunta.objects.aggregate(Max('orden'))['orden__max'] or 0
 
                 for _, row in df.iterrows():
-                    Pregunta.objects.create(
-                        texto=row['texto'],
-                        respuesta_correcta=row['respuesta_correcta'],
-                        respuesta1=row['respuesta1'],
-                        respuesta2=row['respuesta2'],
-                        respuesta3=row['respuesta3'],
-                        orden=max_orden + 1
-                    )
+                    if 'enunciado' in row and pd.notna(row['enunciado']):
+                        enunciado, created = Pregunta.objects.get_or_create(texto=row['enunciado'], es_enunciado=True)
+                        pregunta = Pregunta.objects.create(texto=row['texto'], orden=max_orden + 1, enunciado=enunciado)
+                    else:
+                        pregunta = Pregunta.objects.create(texto=row['texto'], orden=max_orden + 1)
+
+                    respuestas = [
+                        {'texto': row['respuesta1'], 'es_correcta': row['respuesta_correcta'] == row['respuesta1']},
+                        {'texto': row['respuesta2'], 'es_correcta': row['respuesta_correcta'] == row['respuesta2']},
+                        {'texto': row['respuesta3'], 'es_correcta': row['respuesta_correcta'] == row['respuesta3']},
+                    ]
+                    for respuesta_data in respuestas:
+                        Respuesta.objects.create(pregunta=pregunta, **respuesta_data)
                     max_orden += 1
 
                 return redirect(reverse('admin_panel:lista_preguntas'))
@@ -318,3 +399,30 @@ class AccionesExamenesView(View):
             return redirect(reverse('admin_panel:usuarios_inscritos', args=[selected_exams[0]]))
 
         return redirect('admin_panel:lista_examenes')
+
+
+#---------------------------------------------
+#             CREAR TIPO EXAMEN
+#----------------------------------------------
+
+def crear_tipo_examen(request):
+    if request.method == 'POST':
+        tipo_examen_form = TipoExamenForm(request.POST)
+        modulo_formset = ModuloFormSet(request.POST)
+
+        if tipo_examen_form.is_valid() and modulo_formset.is_valid():
+            tipo_examen = tipo_examen_form.save()  # Guardar el nuevo TipoExamen
+            modulos = modulo_formset.save(commit=False)
+            for modulo in modulos:
+                modulo.tipo_examen = tipo_examen  # Asignar el TipoExamen a cada Módulo
+                modulo.save()  # Guardar el Módulo
+            return redirect('url_a_la_que_redirigir')  # Redirige donde quieras
+
+    else:
+        tipo_examen_form = TipoExamenForm()
+        modulo_formset = ModuloFormSet()
+
+    return render(request, 'crear_tipo_examen.html', {
+        'tipo_examen_form': tipo_examen_form,
+        'modulo_formset': modulo_formset
+    })

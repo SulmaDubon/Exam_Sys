@@ -27,7 +27,7 @@
     </form>
 
     <div class="button-container">
-        <a href="{% url 'admin_panel:crear_examen' %}" class="btn btn-primary">Crear Nuevo Examen</a>
+        <a href="{% url 'admin_panel:crear_examen' %}" class="btn btn-primary">Agendar Nuevo Examen</a>
         <a href="{% url 'admin_panel:lista_preguntas' %}" class="btn btn-primary">Preguntas</a>
     </div>
 
@@ -36,7 +36,7 @@
             <tr>
                 <th>Nombre</th>
                 <th>
-                    <a href="?order=fecha&direction={% if request.GET.direction == 'asc' and request.GET.order == 'fecha' %}desc{% else %}asc{% endif %}">
+                    <a href="?{% if current_year %}year={{ current_year }}&{% endif %}{% if current_month %}month={{ current_month }}&{% endif %}order=fecha&direction={% if request.GET.direction == 'asc' and request.GET.order == 'fecha' %}desc{% else %}asc{% endif %}">
                         Fecha
                         {% if request.GET.order == 'fecha' %}
                             {% if request.GET.direction == 'asc' %}

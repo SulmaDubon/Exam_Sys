@@ -116,11 +116,15 @@
                     <td>{{ pregunta.texto }}</td>
                     <td>
                         <ul>
-                            <li><strong>Correcta:</strong> {{ pregunta.respuesta_correcta }}</li>
-                            <li><strong>1:</strong> {{ pregunta.respuesta1 }}</li>
-                            <li><strong>2:</strong> {{ pregunta.respuesta2 }}</li>
-                            <li><strong>3:</strong> {{ pregunta.respuesta3 }}</li>
-                            <li><strong>4:</strong> {{ pregunta.respuesta4 }}</li>
+                            {% for respuesta in pregunta.respuestas.all %}
+                                <li>
+                                    {% if respuesta.es_correcta %}
+                                        <strong>Correcta:</strong> <span style="color: green;">{{ respuesta.texto }}</span>
+                                    {% else %}
+                                        {{ respuesta.texto }}
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
                         </ul>
                     </td>
                     <td class="actions">

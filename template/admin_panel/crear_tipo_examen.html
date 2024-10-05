@@ -1,0 +1,19 @@
+<form method="post">
+    {% csrf_token %}
+    <div>
+        <h2>Crear un nuevo tipo de examen</h2>
+        {{ tipo_examen_form.as_p }}  <!-- Renderiza el formulario de TipoExamen -->
+    </div>
+
+    <h3>Módulos</h3>
+    {{ modulo_formset.management_form }}
+    <div id="modulos">
+        {% for form in modulo_formset %}
+            <div class="modulo-form">
+                {{ form.as_p }}  <!-- Renderiza cada formulario del formset -->
+            </div>
+        {% endfor %}
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</form>

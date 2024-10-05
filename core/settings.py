@@ -11,7 +11,7 @@ environ.Env.read_env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
-DEBUG = 'RENDER' not in os.environ
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -45,7 +45,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Agregar whitenoise al principio
+    #'whitenoise.middleware.WhiteNoiseMiddleware',  # Agregar whitenoise al principio
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -136,8 +137,12 @@ if not DEBUG:
     EMAIL_USE_TLS = True  # Usar TLS para la conexión (True o False)
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+    
 
     
+
+
+
 
 
 
@@ -156,3 +161,9 @@ LOGIN_URL = 'users:login'
 LOGIN_REDIRECT_URL = 'dashboard_users:dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
+# settings.py
+INTERNAL_IPS = [
+    # IPs locales por defecto
+    '127.0.0.1',
+    'localhost',
+]

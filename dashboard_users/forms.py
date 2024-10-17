@@ -29,73 +29,66 @@ class ExamenForm(forms.ModelForm):
 
 #---------------- Formulario para las respuestas asociadas a una pregunta
 
-# Formulario para preguntas (con o sin enunciado)
 class PreguntaForm(forms.ModelForm):
+    es_enunciado = forms.BooleanField(
+        label='¿Es un enunciado?', 
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_es_enunciado'})
+    )
+    
     class Meta:
         model = Pregunta
-        fields = ['texto', 'modulo', 'enunciado']  # Incluye el campo enunciado opcional
+        fields = ['texto', 'tipo_examen', 'modulo', 'enunciado']
         labels = {
             'texto': 'Texto de la pregunta o enunciado',
+            'tipo_examen': 'Tipo de Examen',
             'modulo': 'Módulo asociado',
             'enunciado': 'Enunciado (opcional)',
         }
         widgets = {
             'texto': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'modulo': forms.Select(attrs={'class': 'form-control'}),
+            'tipo_examen': forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo_examen'}),
+            'modulo': forms.Select(attrs={'class': 'form-control', 'id': 'id_modulo'}),
             'enunciado': forms.Select(attrs={'class': 'form-control', 'empty_label': 'Sin enunciado'}),
         }
 
-# Formulario para las preguntas derivadas (si el enunciado está presente)
-class PreguntaDerivadaForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['modulo'].queryset = Modulo.objects.none()
+
+        if 'tipo_examen' in self.data:
+            try:
+                tipo_examen_id = int(self.data.get('tipo_examen'))
+                self.fields['modulo'].queryset = Modulo.objects.filter(tipo_examen_id=tipo_examen_id)
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk:
+            self.fields['modulo'].queryset = self.instance.tipo_examen.modulo_set.all()
+
+
+
+# Formulario para respuestas asociadas a una pregunta
+class RespuestaForm(forms.ModelForm):
     class Meta:
-        model = Pregunta
-        fields = ['texto', 'activo']
+        model = Respuesta
+        fields = ['texto', 'es_correcta']
         labels = {
-            'texto': 'Texto de la pregunta derivada',
-            'activo': '¿Está activa?',
+            'texto': 'Texto de la respuesta',
+            'es_correcta': '¿Es la respuesta correcta?',
         }
         widgets = {
-            'texto': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'texto': forms.TextInput(attrs={'class': 'form-control'}),
+            'es_correcta': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
-# Formset para las preguntas derivadas de un enunciado
-PreguntaDerivadaFormSet = inlineformset_factory(
-    Pregunta,
-    Pregunta,
-    form=PreguntaDerivadaForm,
-    fields=['texto', 'activo'],
-    extra=3,  # Crear 3 preguntas derivadas
-    max_num=3,
-    can_delete=False,
-)
-
-# Formset para las respuestas de cada pregunta derivada
-class RespuestaFormSet(forms.BaseInlineFormSet):
-    def clean(self):
-        super().clean()
-        correctas = 0
-        for form in self.forms:
-            if form.cleaned_data.get('es_correcta'):
-                correctas += 1
-        if correctas > 1:
-            raise forms.ValidationError("Solo una respuesta puede ser marcada como correcta.")
-        if correctas == 0:
-            raise forms.ValidationError("Debe marcar al menos una respuesta como correcta.")
-
+# Formset para las respuestas
 RespuestaFormSet = inlineformset_factory(
     Pregunta,
     Respuesta,
-    form=forms.ModelForm,
-    formset=RespuestaFormSet,
-    fields=['texto', 'es_correcta'],
+    form=RespuestaForm,
     extra=3,
     max_num=3,
     can_delete=False,
-    widgets={
-        'texto': forms.TextInput(attrs={'class': 'form-control'}),
-        'es_correcta': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-    }
 )
 
 
@@ -104,6 +97,10 @@ RespuestaFormSet = inlineformset_factory(
 class SubirPreguntasForm(forms.Form):
     archivo = forms.FileField(label='Archivo Excel', required=True)
 
+
+#----------------------------------------------
+#                INSCRIPCION
+#------------------------------------------------
 
 # Formulario inscripcion de examen
 
@@ -139,7 +136,11 @@ class CambiarContrasenaForm(PasswordChangeForm):
 
 
 
-# Formulario para el TipoExamen
+# Clase base para los estilos de widgets
+class BaseFormStyle:
+    form_control = {'class': 'form-control'}
+
+# Formulario para el modelo TipoExamen
 class TipoExamenForm(forms.ModelForm):
     class Meta:
         model = TipoExamen
@@ -149,16 +150,37 @@ class TipoExamenForm(forms.ModelForm):
             'tiempo_limite': 'Tiempo límite (minutos)'
         }
         widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'tiempo_limite': forms.NumberInput(attrs={'class': 'form-control'}),
+            'nombre': forms.TextInput(attrs=BaseFormStyle.form_control),
+            'tiempo_limite': forms.NumberInput(attrs=BaseFormStyle.form_control),
         }
 
-# Formset para los Módulos
+    # Validación personalizada para asegurar que el tiempo límite sea positivo
+    def clean_tiempo_limite(self):
+        tiempo_limite = self.cleaned_data.get('tiempo_limite')
+        if tiempo_limite <= 0:
+            raise forms.ValidationError('El tiempo límite debe ser un número positivo.')
+        return tiempo_limite
+
+# Formulario para el modelo Modulo
+class ModuloForm(forms.ModelForm):
+    class Meta:
+        model = Modulo
+        fields = ['nombre', 'cantidad_preguntas']
+        labels = {
+            'nombre': 'Nombre del módulo',
+            'cantidad_preguntas': 'Cantidad de preguntas'
+        }
+        widgets = {
+            'nombre': forms.TextInput(attrs=BaseFormStyle.form_control),
+            'cantidad_preguntas': forms.NumberInput(attrs=BaseFormStyle.form_control),
+        }
+
+# Formset para los Módulos usando el formulario personalizado
 ModuloFormSet = inlineformset_factory(
     TipoExamen,  # Modelo padre
     Modulo,  # Modelo hijo
-    form=forms.ModelForm,  # Formulario del modelo hijo
+    form=ModuloForm,  # Formulario personalizado del modelo hijo
     fields=['nombre', 'cantidad_preguntas'],
     extra=1,  # Número de formularios adicionales a mostrar por defecto
-    can_delete=True  # Permitir eliminar módulos del formset
+    can_delete=True  # Habilitar la opción de eliminar formularios
 )

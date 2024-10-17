@@ -2,43 +2,47 @@ from django.urls import path
 from .views import (
     AdminLoginView,
     VistaAdminPanel,
-    ListaUsuarios,
-    CrearUsuario,
-    EditarUsuario,
-    EliminarUsuario,
-    ListaExamenes,
-    CrearExamen,
-    EditarExamen,
-    EliminarExamen,
+    ListaUsuarios, CrearUsuario, EditarUsuario, EliminarUsuario,
+    ListaExamenes, CrearExamen, EditarExamen, EliminarExamen,
     UsuariosInscritosView,
-    ListaPreguntas,
-    CrearPreguntasView,
-    EditarPregunta,
-    EliminarPregunta,
+    ListaPreguntas, CrearPreguntasView, EditarPregunta, EliminarPregunta,
     AccionesExamenesView,
     subir_preguntas, 
-    crear_tipo_examen     
+    TipoExamenListView, CrearTipoExamenView, EditarTipoExamenView, TipoExamenDeleteView,
+    get_modulos
 )
 
 app_name = 'admin_panel'
 
 urlpatterns = [
     path('login/', AdminLoginView.as_view(), name='admin_login'),
-    path('', VistaAdminPanel.as_view(), name='admin_panel'),
+    path('', VistaAdminPanel.as_view(), name='admin_panel'),  # Ruta raíz para el panel de administración
     path('usuarios/', ListaUsuarios.as_view(), name='lista_usuarios'),
     path('usuarios/crear/', CrearUsuario.as_view(), name='crear_usuario'),
     path('usuarios/editar/<int:pk>/', EditarUsuario.as_view(), name='editar_usuario'),
     path('usuarios/eliminar/<int:pk>/', EliminarUsuario.as_view(), name='eliminar_usuario'),
+    
+    # Exámenes
     path('examenes/', ListaExamenes.as_view(), name='lista_examenes'),
     path('examenes/crear/', CrearExamen.as_view(), name='crear_examen'),
     path('examenes/editar/<int:pk>/', EditarExamen.as_view(), name='editar_examen'),
     path('examenes/eliminar/<int:pk>/', EliminarExamen.as_view(), name='eliminar_examen'),
     path('examenes/usuarios-inscritos/<int:pk>/', UsuariosInscritosView.as_view(), name='usuarios_inscritos'),
+    path('examenes/acciones/', AccionesExamenesView.as_view(), name='acciones_examenes'),
+
+    # Preguntas
     path('preguntas/', ListaPreguntas.as_view(), name='lista_preguntas'),
     path('preguntas/crear/', CrearPreguntasView.as_view(), name='crear_pregunta'),
     path('preguntas/editar/<int:pk>/', EditarPregunta.as_view(), name='editar_pregunta'),
     path('preguntas/eliminar/<int:pk>/', EliminarPregunta.as_view(), name='eliminar_pregunta'),
-    path('preguntas/subir/', subir_preguntas, name='subir_preguntas'),  # Añadir esta línea para la vista de subir preguntas
-    path('examenes/acciones/', AccionesExamenesView.as_view(), name='acciones_examenes'),
-    path('crear-tipo-examen/', crear_tipo_examen, name='crear_tipo_examen'),
+    path('preguntas/subir/', subir_preguntas, name='subir_preguntas'),
+
+    # Tipo de Examenes
+    path('tipo_examen/', TipoExamenListView.as_view(), name='lista_tipo_examen'),  # Corrigido nombre de la ruta
+    path('tipo_examen/crear/', CrearTipoExamenView.as_view(), name='crear_tipo_examen'),
+    path('tipo_examen/editar/<int:pk>/', EditarTipoExamenView.as_view(), name='editar_tipo_examen'),
+    path('tipo_examen/eliminar/<int:pk>/', TipoExamenDeleteView.as_view(), name='eliminar_tipo_examen'),  # Corregido "ath" a "path"
+
+    # Ruta para obtener módulos por tipo de examen
+    path('get-modulos/<int:tipo_examen_id>/', get_modulos, name='get_modulos'),
 ]

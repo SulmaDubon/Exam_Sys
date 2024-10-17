@@ -9,7 +9,7 @@ from django.utils.decorators import method_decorator
 import pandas as pd
 from users.models import CustomUser
 from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen
-from dashboard_users.forms import ExamenForm, PreguntaDerivadaFormSet, PreguntaForm, SubirPreguntasForm, TipoExamenForm, ModuloFormSet, RespuestaFormSet   # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.forms import ExamenForm, PreguntaForm, SubirPreguntasForm, TipoExamenForm, ModuloFormSet, RespuestaFormSet   # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
@@ -19,6 +19,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.db.models import Max
 from django.views.generic.edit import FormView
+from django.http import JsonResponse
 
 
 # from .decorators import es_admin
@@ -100,7 +101,7 @@ class EliminarUsuario(DeleteView):
     # Renderiza una página de confirmación y maneja la eliminación del usuario
 
 #------------------------------------------------------------
-#                EXAMEN
+#              LISTAR   EXAMEN
 #-----------------------------------------------------------
 
 # Vista para listar todos los exámenes
@@ -208,7 +209,20 @@ class UsuariosInscritosView(DetailView):
         context['search_query'] = search_query
         context['page_obj'] = page_obj
         return context
-    
+
+#-------------------------------------------------------
+#           VISTA PARA MODULOS ASOCIADOS A EXAMEN
+#--------------------------------------------------------
+
+def get_modulos(request, tipo_examen_id):
+    # Filtra los módulos por el tipo de examen seleccionado
+    modulos = Modulo.objects.filter(tipo_examen_id=tipo_examen_id)
+    data = {
+        'modulos': [{'id': modulo.id, 'nombre': modulo.nombre} for modulo in modulos]
+    }
+    return JsonResponse(data)
+
+
 #------------------------------------------------------------------------------
 #      PREGUNTAS
 #------------------------------------------------------------------------------
@@ -235,41 +249,33 @@ class CrearPreguntasView(FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
-            context['formset'] = RespuestaFormSet(self.request.POST)
-            context['pregunta_formset'] = PreguntaDerivadaFormSet(self.request.POST)
+            context['respuesta_formset'] = RespuestaFormSet(self.request.POST)
         else:
-            context['formset'] = RespuestaFormSet()
-            context['pregunta_formset'] = PreguntaDerivadaFormSet()
+            context['respuesta_formset'] = RespuestaFormSet()
         return context
 
     def form_valid(self, form):
-        formset = RespuestaFormSet(self.request.POST)
-        pregunta_formset = PreguntaDerivadaFormSet(self.request.POST)
+        respuesta_formset = RespuestaFormSet(self.request.POST)
         
-        if form.is_valid():
+        if form.is_valid() and respuesta_formset.is_valid():
+            # Guardar la pregunta principal (individual o enunciado)
             pregunta = form.save()
-            # Si la pregunta tiene un enunciado, guardamos las preguntas derivadas
-            if pregunta.enunciado:
-                if pregunta_formset.is_valid():
-                    preguntas_derivadas = pregunta_formset.save(commit=False)
-                    for pregunta_derivada in preguntas_derivadas:
-                        pregunta_derivada.enunciado = pregunta
-                        pregunta_derivada.save()
-                        # Guardar respuestas para las preguntas derivadas
-                        for respuesta_formset in RespuestaFormSet(self.request.POST, instance=pregunta_derivada):
-                            if respuesta_formset.is_valid():
-                                respuestas = respuesta_formset.save(commit=False)
-                                for respuesta in respuestas:
-                                    respuesta.pregunta = pregunta_derivada
-                                    respuesta.save()
+
+            # Si es un enunciado, se manejará a nivel de modelo
+            if form.cleaned_data.get('es_enunciado'):
+                # Si la pregunta es un enunciado, no necesitamos respuestas inmediatas, pero podrías agregar lógica adicional aquí si es necesario
+                pass
             else:
-                if formset.is_valid():
-                    formset.instance = pregunta
-                    formset.save()
+                # Si es una pregunta individual, guardar las respuestas
+                respuesta_formset.instance = pregunta
+                respuesta_formset.save()
             
             return super().form_valid(form)
-        else:
-            return self.form_invalid(form)
+        
+        # Si algo falla, renderiza el formulario con errores
+        return self.form_invalid(form)
+
+
 
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -405,24 +411,97 @@ class AccionesExamenesView(View):
 #             CREAR TIPO EXAMEN
 #----------------------------------------------
 
-def crear_tipo_examen(request):
-    if request.method == 'POST':
+class TipoExamenListView(ListView):
+    model = TipoExamen
+    template_name = 'admin_panel/lista_tipo_examen.html'
+    context_object_name = 'tipos_examenes'
+
+    def get_queryset(self):
+        # Utilizamos prefetch_related para traer todos los módulos relacionados en una sola operación
+        return TipoExamen.objects.prefetch_related('modulos')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Preparar información de módulos para cada tipo de examen
+        tipos_examenes_info = []
+        for tipo_examen in context['tipos_examenes']:
+            # `tipo_examen.modulos.all()` usa los módulos prefetched gracias a `prefetch_related`
+            modulos = tipo_examen.modulos.all()
+            total_preguntas = sum(modulo.cantidad_preguntas for modulo in modulos)
+            
+            tipos_examenes_info.append({
+                'tipo_examen': tipo_examen,
+                'modulos': modulos,
+                'total_preguntas': total_preguntas
+            })
+
+        # Añadir la información enriquecida al contexto
+        context['tipos_examenes_info'] = tipos_examenes_info
+        return context
+
+
+
+class CrearTipoExamenView(View):
+    def get(self, request):
+        tipo_examen_form = TipoExamenForm()
+        modulo_formset = ModuloFormSet()
+        context = {
+            'tipo_examen_form': tipo_examen_form,
+            'modulo_formset': modulo_formset
+        }
+        return render(request, 'admin_panel/crear_tipo_examen.html', context)
+
+    def post(self, request):
         tipo_examen_form = TipoExamenForm(request.POST)
         modulo_formset = ModuloFormSet(request.POST)
 
         if tipo_examen_form.is_valid() and modulo_formset.is_valid():
-            tipo_examen = tipo_examen_form.save()  # Guardar el nuevo TipoExamen
-            modulos = modulo_formset.save(commit=False)
-            for modulo in modulos:
-                modulo.tipo_examen = tipo_examen  # Asignar el TipoExamen a cada Módulo
-                modulo.save()  # Guardar el Módulo
-            return redirect('url_a_la_que_redirigir')  # Redirige donde quieras
+            tipo_examen = tipo_examen_form.save()
+            modulo_formset.instance = tipo_examen
+            modulo_formset.save()
+            return redirect('admin_panel:lista_tipo_examen')  # Cambia 'ruta_donde_redirigir' a la URL de listar
 
-    else:
-        tipo_examen_form = TipoExamenForm()
-        modulo_formset = ModuloFormSet()
+        context = {
+            'tipo_examen_form': tipo_examen_form,
+            'modulo_formset': modulo_formset
+        }
+        return render(request, 'admin_panel/crear_tipo_examen.html', context)
 
-    return render(request, 'crear_tipo_examen.html', {
-        'tipo_examen_form': tipo_examen_form,
-        'modulo_formset': modulo_formset
-    })
+
+
+
+class EditarTipoExamenView(View):
+    def get(self, request, pk):
+        tipo_examen = get_object_or_404(TipoExamen, pk=pk)
+        tipo_examen_form = TipoExamenForm(instance=tipo_examen)
+        modulo_formset = ModuloFormSet(instance=tipo_examen)
+        context = {
+            'tipo_examen_form': tipo_examen_form,
+            'modulo_formset': modulo_formset
+        }
+        return render(request, 'editar_tipo_examen.html', context)
+
+    def post(self, request, pk):
+        tipo_examen = get_object_or_404(TipoExamen, pk=pk)
+        tipo_examen_form = TipoExamenForm(request.POST, instance=tipo_examen)
+        modulo_formset = ModuloFormSet(request.POST, instance=tipo_examen)
+
+        if tipo_examen_form.is_valid() and modulo_formset.is_valid():
+            tipo_examen = tipo_examen_form.save()
+            modulo_formset.save()
+            return redirect('ruta_donde_redirigir')
+
+        context = {
+            'tipo_examen_form': tipo_examen_form,
+            'modulo_formset': modulo_formset
+        }
+        return render(request, 'editar_tipo_examen.html', context)
+    
+
+class TipoExamenDeleteView(DeleteView):
+    model = TipoExamen
+    template_name = 'admin_panel/confirmar_eliminar_tipo_examen.html'
+    success_url = reverse_lazy('admin_panel:listar_tipo_examen')  # Redirige a la lista de exámenes después de eliminar
+
+

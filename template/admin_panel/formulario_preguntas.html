@@ -1,119 +1,37 @@
-{% extends 'base.html' %}
-
-{% block title %}Formulario de Pregunta{% endblock %}
-
-{% block content %}
-<div class="admin-container">
-    <h1>Formulario de Pregunta</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agregar Pregunta</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Agregar Pregunta</h2>
     <form method="post">
         {% csrf_token %}
-        
-        <!-- Pregunta o enunciado principal -->
-        <div class="form-group">
-            {{ form.as_p }}
-        </div>
-
-        <!-- Si la pregunta tiene un enunciado asociado, mostramos las preguntas derivadas -->
-        {% if form.cleaned_data.enunciado %}
-            <h3>Preguntas derivadas</h3>
-            {{ pregunta_formset.management_form }}
-            {% for pregunta_form in pregunta_formset %}
-                <div class="form-group pregunta-derivada">
-                    {{ pregunta_form.as_p }} <!-- Formulario para cada pregunta derivada -->
-                    <h4>Respuestas</h4>
-                    {{ respuesta_formset_list.forloop.counter0.management_form }}
-                    {% for respuesta_form in respuesta_formset_list.forloop.counter0 %}
-                        <div class="respuesta-group">
-                            {{ respuesta_form.as_p }} <!-- Respuestas para la pregunta derivada -->
-                        </div>
-                    {% endfor %}
-                </div>
+        {{ form.as_p }}
+        <div id="respuesta-formset">
+            <h3>Respuestas</h3>
+            {{ respuesta_formset.management_form }}
+            {% for form in respuesta_formset %}
+                {{ form.as_p }}
             {% endfor %}
-        {% else %}
-            <!-- Si no hay enunciado, mostramos las respuestas de la pregunta independiente -->
-            <h4>Respuestas</h4>
-            {{ formset.management_form }}
-            {% for respuesta_form in formset %}
-                <div class="respuesta-group">
-                    {{ respuesta_form.as_p }}
-                </div>
-            {% endfor %}
-        {% endif %}
-
-        <!-- Botones de guardar y cancelar -->
-        <div class="button-container">
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a href="{% url 'admin_panel:lista_preguntas' %}" class="btn btn-secondary">Cancelar</a>
         </div>
+        <button type="submit">Guardar</button>
     </form>
-</div>
-{% endblock %}
+    <a href="{% url 'admin_panel:lista_preguntas' %}">Volver a la lista de preguntas</a>
 
-{% block head %}
-<style>
-    .admin-container {
-        padding: 20px;
-        max-width: 800px;
-        margin: auto;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    h1 {
-        color: #333;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    .form-group {
-        margin-bottom: 15px;
-    }
-    label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-    input[type="text"], textarea, select {
-        padding: 10px;
-        width: calc(100% - 22px);
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        margin-bottom: 10px;
-    }
-    .respuesta-group {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-    .respuesta-group input[type="radio"] {
-        margin-right: 10px;
-    }
-    .respuesta-group label {
-        flex-grow: 1;
-    }
-    .button-container {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 20px;
-    }
-    .btn-primary {
-        background-color: #007bff;
-        border: none;
-        color: #fff;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-    .btn-secondary {
-        background-color: #6c757d;
-        border: none;
-        color: #fff;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-    .error {
-        color: red;
-        font-size: 0.875em;
-    }
-</style>
-{% endblock %}
+    <script>
+        $(document).ready(function() {
+            // Mostrar/ocultar respuestas según si es un enunciado
+            $('#id_es_enunciado').change(function() {
+                if ($(this).is(':checked')) {
+                    $('#respuesta-formset').hide();
+                } else {
+                    $('#respuesta-formset').show();
+                }
+            }).trigger('change'); // Ejecutar al cargar la página
+        });
+    </script>
+</body>
+</html>
+

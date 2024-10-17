@@ -52,10 +52,11 @@ class Examen(models.Model):
 class Pregunta(models.Model):
     texto = models.TextField()  # El texto de la pregunta o enunciado
     activo = models.BooleanField(default=True)
+    tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='preguntas')  # Asociación directa al tipo de examen
     modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='preguntas')  # Asociar a módulo
     enunciado = models.ForeignKey(
         'self', 
-        on_delete=models.SET_NULL, 
+        on_delete=models.CASCADE, 
         null=True, 
         blank=True, 
         related_name='preguntas_relacionadas'
@@ -67,9 +68,10 @@ class Pregunta(models.Model):
 
     def __str__(self):
         if self.es_enunciado():
-            return f"Enunciado: {self.texto} (Módulo: {self.modulo.nombre})"
+            return f"Enunciado: {self.texto} (Módulo: {self.modulo.nombre}, Tipo de Examen: {self.tipo_examen.nombre})"
         else:
-            return f"Pregunta: {self.texto} (Módulo: {self.modulo.nombre})"
+            return f"Pregunta: {self.texto} (Módulo: {self.modulo.nombre}, Tipo de Examen: {self.tipo_examen.nombre})"
+
 
 #----------------------- RESPUESTAS ----------------------------
 

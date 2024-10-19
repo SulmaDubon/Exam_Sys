@@ -319,7 +319,7 @@ class PreguntaUpdateView(UpdateView):
 # Eliminar pregunta
 class PreguntaDeleteView(DeleteView):
     model = Pregunta
-    template_name = 'admin_panel/confirmar_eliminar.html'
+    template_name = 'admin_panel/confirmar_eliminacion_pregunta.html'
     success_url = reverse_lazy('admin_panel:lista_preguntas')
 
 
@@ -331,48 +331,61 @@ class SubirPreguntasView(FormView):
 
     def form_valid(self, form):
         archivo_excel = form.cleaned_data['archivo']
+        tipo_examen = form.cleaned_data['tipo_examen']
+
         wb = openpyxl.load_workbook(archivo_excel)
         sheet = wb.active
 
-        enunciado_actual = None  # Para almacenar el último enunciado
+        modulos_no_existentes = []
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            _, _, _, _, _, _, modulo_nombre = row
+            
+            if not Modulo.objects.filter(nombre=modulo_nombre).exists():
+                modulos_no_existentes.append(modulo_nombre)
+        
+        if modulos_no_existentes:
+            mensajes_error = f"Los siguientes módulos no existen: {', '.join(modulos_no_existentes)}. No se ha subido el archivo."
+            messages.error(self.request, mensajes_error)
+            return self.form_invalid(form)
 
-        for row in sheet.iter_rows(min_row=2, values_only=True):  # Itera las filas a partir de la segunda (saltando la cabecera)
-            tipo, texto_enunciado, texto_pregunta, modulo_nombre, tipo_examen_nombre, activo = row
+        enunciado_actual = None
 
-            # Buscar o crear los objetos de Módulo y TipoExamen
-            modulo, _ = Modulo.objects.get_or_create(nombre=modulo_nombre)
-            tipo_examen, _ = TipoExamen.objects.get_or_create(nombre=tipo_examen_nombre)
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            texto_enunciado, texto_pregunta, respuesta_correcta, respuesta_1, respuesta_2, respuesta_3, modulo_nombre = row
 
-            # Procesar preguntas simples
-            if tipo == 'simple':
-                Pregunta.objects.create(
-                    texto=texto_pregunta,
-                    modulo=modulo,
-                    tipo_examen=tipo_examen,
-                    activo=activo
-                )
+            modulo = Modulo.objects.get(nombre=modulo_nombre)
 
-            # Procesar preguntas con enunciado
-            elif tipo == 'enunciado':
+            if texto_enunciado:
                 enunciado_actual = Pregunta.objects.create(
                     texto=texto_enunciado,
                     modulo=modulo,
                     tipo_examen=tipo_examen,
-                    activo=activo
+                    activo=True
                 )
 
-            # Procesar preguntas anidadas (deben estar relacionadas con un enunciado existente)
-            elif tipo == 'anidada' and enunciado_actual:
-                Pregunta.objects.create(
-                    texto=texto_pregunta,
-                    modulo=modulo,
-                    tipo_examen=tipo_examen,
-                    enunciado=enunciado_actual,  # Relacionada con el enunciado
-                    activo=activo
+            pregunta_actual = Pregunta.objects.create(
+                texto=texto_pregunta,
+                modulo=modulo,
+                tipo_examen=tipo_examen,
+                enunciado=enunciado_actual if texto_enunciado else None,
+                activo=True
+            )
+
+            # Procesar las respuestas y marcar la correcta
+            respuestas = [
+                {'texto': respuesta_1, 'es_correcta': respuesta_1 == respuesta_correcta},
+                {'texto': respuesta_2, 'es_correcta': respuesta_2 == respuesta_correcta},
+                {'texto': respuesta_3, 'es_correcta': respuesta_3 == respuesta_correcta},
+            ]
+
+            for respuesta in respuestas:
+                Respuesta.objects.create(
+                    pregunta=pregunta_actual,
+                    texto=respuesta['texto'],
+                    es_correcta=respuesta['es_correcta']
                 )
 
         return super().form_valid(form)
-
 #------------------------------------------------
 #   ACCIONES
 #------------------------------------------------
@@ -457,6 +470,8 @@ class CrearTipoExamenView(View):
 
         if tipo_examen_form.is_valid() and modulo_formset.is_valid():
             tipo_examen = tipo_examen_form.save()
+            
+             # Vincular los módulos al tipo de examen
             modulo_formset.instance = tipo_examen
             modulo_formset.save()
             return redirect('admin_panel:lista_tipo_examen')  # Cambia 'ruta_donde_redirigir' a la URL de listar

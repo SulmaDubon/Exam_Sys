@@ -152,6 +152,13 @@ class SubirPreguntasForm(forms.Form):
         widget=forms.ClearableFileInput(attrs={'class': 'form-control'})
     )
 
+    tipo_examen = forms.ModelChoiceField(
+        queryset=TipoExamen.objects.all(),
+        label="Tipo de Examen",
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
 # -------------------- FORMULARIO RESPUESTA --------------------
 
 class RespuestaForm(forms.ModelForm):

@@ -1,6 +1,24 @@
-<h2>Subir archivo Excel de Preguntas</h2>
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Subir</button>
+    
+    <div class="form-group">
+        <label for="id_tipo_examen">Seleccionar Tipo de Examen</label>
+        {{ form.tipo_examen }}
+    </div>
+
+    <div class="form-group">
+        <label for="id_archivo">Seleccionar Archivo Excel</label>
+        {{ form.archivo }}
+    </div>
+
+    <button type="submit" class="btn btn-primary">Subir Preguntas</button>
 </form>
+

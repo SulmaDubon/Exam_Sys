@@ -104,6 +104,7 @@ class Examen(models.Model):
     usuarios = models.ManyToManyField(CustomUser, through='InscripcionExamen')
     tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='examenes')  # Relación con TipoExamen
     aprobacion_minima = models.FloatField(default=6.0, verbose_name="Nota mínima para aprobar")
+    preguntas = models.ManyToManyField('Pregunta', blank=True, related_name='examenes')  # Añadir campo para guardar preguntas seleccionadas
 
     def obtener_tiempo_limite(self):
         """Devuelve el tiempo límite del examen en formato HH:MM basado en el tipo de examen."""

@@ -7,7 +7,8 @@ from .views import (
     InscripcionExamenView,  # Actualizar el nombre de la vista de inscripción
     ResultadosExamen,
     GenerarExamenView,
-    SubmitExamenView
+    SubmitExamenView,
+    sala_espera_examen
 )
 
 app_name = 'dashboard_users'
@@ -19,4 +20,5 @@ urlpatterns = [
     path('examen/<int:examen_id>/', GenerarExamenView.as_view(), name='generar_examen'),  # Añadir examen_id
     path('examen/<int:examen_id>/submit/', SubmitExamenView.as_view(), name='submit_examen'),  # Añadir examen_id para el submit
     path('resultados/', ResultadosExamen.as_view(), name='resultados'),
+    path('sala_espera/<int:examen_id>/', sala_espera_examen, name='sala_espera_examen'),
 ]

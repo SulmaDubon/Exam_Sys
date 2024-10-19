@@ -1,5 +1,6 @@
 # dashboard_users/views.py
 
+from datetime import datetime, timedelta
 from django.shortcuts import render, redirect
 from django.views import View
 from django.views.generic import TemplateView
@@ -52,6 +53,37 @@ class CambiarContrasena(LoginRequiredMixin, View):
             return redirect('dashboard_users:dashboard')
         messages.error(request, 'Por favor corrige los errores a continuación.')
         return render(request, self.template_name, {'form': form})
+
+
+#-----------------------------------------------
+#      SALA DE ESPERA
+#-----------------------------------------------
+def sala_espera_examen(request, examen_id):
+    # Obtener el examen por su ID
+    examen = get_object_or_404(Examen, id=examen_id)
+    
+    # Obtener la fecha y hora del examen y asegurarse de que es timezone-aware
+    examen_datetime = datetime.combine(examen.fecha, examen.hora)
+    examen_datetime = timezone.make_aware(examen_datetime, timezone.get_current_timezone())
+
+    # Obtener la hora actual y asegurarse de que es timezone-aware
+    ahora = timezone.now()
+
+    # Calcular el tiempo restante
+    tiempo_restante = examen_datetime - ahora
+
+    # Si ya es la hora del examen, redirigir al examen
+    if tiempo_restante <= timedelta(0):
+        return redirect('dashboard_users:generar_examen', examen_id=examen.id)
+
+    # Si falta tiempo para el examen, mostrar la sala de espera
+    context = {
+        'examen': examen,
+        'tiempo_restante': tiempo_restante
+    }
+    return render(request, 'dashboard_users/sala_espera.html', context)
+
+
 
 #----------------------------------------
 #   EXAMEN

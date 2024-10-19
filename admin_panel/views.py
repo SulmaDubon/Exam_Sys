@@ -6,10 +6,11 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, D
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
+import openpyxl
 import pandas as pd
 from users.models import CustomUser
 from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen
-from dashboard_users.forms import ExamenForm, SubirPreguntasForm, TipoExamenForm, ModuloFormSet, SubirPreguntasForm, PreguntaSimpleForm, PreguntaConEnunciadoForm  # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.forms import ExamenForm, RespuestaFormSet,  TipoExamenForm, ModuloFormSet, SubirPreguntasForm, PreguntaSimpleForm, PreguntaConEnunciadoForm  # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
@@ -226,7 +227,7 @@ def get_modulos(request, tipo_examen_id):
 #------------------------------------------------------------------------------
 #      PREGUNTAS
 #------------------------------------------------------------------------------
-
+# listar pregunta simple
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 class ListaPreguntas(ListView):
     model = Pregunta
@@ -237,15 +238,42 @@ class ListaPreguntas(ListView):
     def get_queryset(self):
         # Obtener todas las preguntas con sus respuestas relacionadas
         return Pregunta.objects.prefetch_related('respuestas').order_by('id')
-        
+
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
 # Crear pregunta simple
 class PreguntaCreateView(CreateView):
     model = Pregunta
     form_class = PreguntaSimpleForm
-    template_name = 'admin_panel/form_pregunta.html'
+    template_name = 'admin_panel/formulario_preguntas.html'
     success_url = reverse_lazy('admin_panel:lista_preguntas')
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        if self.request.POST:
+            data['respuestas'] = RespuestaFormSet(self.request.POST)
+        else:
+            data['respuestas'] = RespuestaFormSet()
+        return data
+
+    def form_valid(self, form):
+        # Guardar la pregunta primero para asegurarnos de que tenga un ID
+        self.object = form.save()
+
+        # Obtenemos el formset de respuestas
+        context = self.get_context_data()
+        respuestas = context['respuestas']
+
+        # Asignar la pregunta guardada a las respuestas
+        respuestas.instance = self.object
+
+        # Verificar si el formset es válido y guardarlo
+        if respuestas.is_valid():
+            respuestas.save()
+            return redirect(self.success_url)
+        else:
+            # Si el formset no es válido, renderizar nuevamente el formulario con errores
+            return self.render_to_response(self.get_context_data(form=form, respuestas=respuestas))
 
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -253,18 +281,39 @@ class PreguntaCreateView(CreateView):
 class PreguntaConEnunciadoCreateView(CreateView):
     model = Pregunta
     form_class = PreguntaConEnunciadoForm
-    template_name = 'admin_panel/form_pregunta_enunciado.html'
+    template_name = 'admin_panel/formulario_pregunta_enunciado'
     success_url = reverse_lazy('admin_panel:lista_preguntas')
 
-
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
-
 # Editar pregunta
 class PreguntaUpdateView(UpdateView):
     model = Pregunta
-    form_class = PreguntaSimpleForm  # Puedes usar lógica adicional para elegir entre simple o con enunciado
-    template_name = 'admin_panel/form_pregunta.html'
+    form_class = PreguntaSimpleForm
+    template_name = 'admin_panel/formulario_preguntas.html'
     success_url = reverse_lazy('admin_panel:lista_preguntas')
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        if self.request.POST:
+            data['respuestas'] = RespuestaFormSet(self.request.POST, instance=self.object)
+        else:
+            data['respuestas'] = RespuestaFormSet(instance=self.object)
+        return data
+
+    def form_valid(self, form):
+        context = self.get_context_data()
+        respuestas = context['respuestas']
+
+        # Guardamos primero la pregunta
+        self.object = form.save()
+
+        # Luego asignamos la pregunta guardada al formset de respuestas y lo guardamos
+        if respuestas.is_valid():
+            respuestas.instance = self.object
+            respuestas.save()
+
+        return super().form_valid(form)
+
 
 
 # Eliminar pregunta
@@ -274,46 +323,55 @@ class PreguntaDeleteView(DeleteView):
     success_url = reverse_lazy('admin_panel:lista_preguntas')
 
 
-def subir_preguntas(request):
-    if request.method == 'POST':
-        form = SubirPreguntasForm(request.POST, request.FILES)
-        if form.is_valid():
-            excel_file = request.FILES['archivo']
-            try:
-                df = pd.read_excel(excel_file)
+# subir pregunta
+class SubirPreguntasView(FormView):
+    template_name = 'admin_panel/subir_preguntas.html'
+    form_class = SubirPreguntasForm
+    success_url = reverse_lazy('admin_panel:lista_preguntas')
 
-                required_columns = ['texto', 'respuesta_correcta', 'respuesta1', 'respuesta2', 'respuesta3']
-                if 'enunciado' in df.columns:
-                    required_columns.append('enunciado')
+    def form_valid(self, form):
+        archivo_excel = form.cleaned_data['archivo']
+        wb = openpyxl.load_workbook(archivo_excel)
+        sheet = wb.active
 
-                if not all(column in df.columns for column in required_columns):
-                    raise ValidationError("El archivo Excel debe contener las columnas correctas.")
+        enunciado_actual = None  # Para almacenar el último enunciado
 
-                max_orden = Pregunta.objects.aggregate(Max('orden'))['orden__max'] or 0
+        for row in sheet.iter_rows(min_row=2, values_only=True):  # Itera las filas a partir de la segunda (saltando la cabecera)
+            tipo, texto_enunciado, texto_pregunta, modulo_nombre, tipo_examen_nombre, activo = row
 
-                for _, row in df.iterrows():
-                    if 'enunciado' in row and pd.notna(row['enunciado']):
-                        enunciado, created = Pregunta.objects.get_or_create(texto=row['enunciado'], es_enunciado=True)
-                        pregunta = Pregunta.objects.create(texto=row['texto'], orden=max_orden + 1, enunciado=enunciado)
-                    else:
-                        pregunta = Pregunta.objects.create(texto=row['texto'], orden=max_orden + 1)
+            # Buscar o crear los objetos de Módulo y TipoExamen
+            modulo, _ = Modulo.objects.get_or_create(nombre=modulo_nombre)
+            tipo_examen, _ = TipoExamen.objects.get_or_create(nombre=tipo_examen_nombre)
 
-                    respuestas = [
-                        {'texto': row['respuesta1'], 'es_correcta': row['respuesta_correcta'] == row['respuesta1']},
-                        {'texto': row['respuesta2'], 'es_correcta': row['respuesta_correcta'] == row['respuesta2']},
-                        {'texto': row['respuesta3'], 'es_correcta': row['respuesta_correcta'] == row['respuesta3']},
-                    ]
-                    for respuesta_data in respuestas:
-                        Respuesta.objects.create(pregunta=pregunta, **respuesta_data)
-                    max_orden += 1
+            # Procesar preguntas simples
+            if tipo == 'simple':
+                Pregunta.objects.create(
+                    texto=texto_pregunta,
+                    modulo=modulo,
+                    tipo_examen=tipo_examen,
+                    activo=activo
+                )
 
-                return redirect(reverse('admin_panel:lista_preguntas'))
-            except Exception as e:
-                form.add_error(None, f"Error procesando el archivo: {str(e)}")
-    else:
-        form = SubirPreguntasForm()
-    return render(request, 'admin_panel/subir_preguntas.html', {'form': form})
+            # Procesar preguntas con enunciado
+            elif tipo == 'enunciado':
+                enunciado_actual = Pregunta.objects.create(
+                    texto=texto_enunciado,
+                    modulo=modulo,
+                    tipo_examen=tipo_examen,
+                    activo=activo
+                )
 
+            # Procesar preguntas anidadas (deben estar relacionadas con un enunciado existente)
+            elif tipo == 'anidada' and enunciado_actual:
+                Pregunta.objects.create(
+                    texto=texto_pregunta,
+                    modulo=modulo,
+                    tipo_examen=tipo_examen,
+                    enunciado=enunciado_actual,  # Relacionada con el enunciado
+                    activo=activo
+                )
+
+        return super().form_valid(form)
 
 #------------------------------------------------
 #   ACCIONES

@@ -1,0 +1,8 @@
+<!-- admin_panel/form_pregunta_enunciado.html -->
+<h2>Crear Pregunta con Enunciado</h2>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Guardar</button>
+</form>

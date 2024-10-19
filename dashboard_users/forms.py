@@ -81,38 +81,76 @@ ModuloFormSet = inlineformset_factory(
 
 # -------------------- FORMULARIO PREGUNTA --------------------
 
-# Formulario para crear una pregunta
-class PreguntaForm(forms.ModelForm):
+class PreguntaSimpleForm(forms.ModelForm):
+    """Formulario para crear preguntas simples (independientes)."""
+
     class Meta:
         model = Pregunta
-        fields = ['texto', 'activo', 'tipo_examen', 'modulo', 'enunciado']
-        labels = {
-            'texto': 'Texto de la pregunta',
-            'activo': '¿Está activa?',
-            'tipo_examen': 'Tipo de examen',
-            'modulo': 'Módulo',
-            'enunciado': 'Enunciado relacionado (opcional)'
-        }
-        widgets = {
-            'texto': forms.TextInput(attrs=BaseFormStyle.form_control),
-            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'tipo_examen': forms.Select(attrs=BaseFormStyle.form_control),
-            'modulo': forms.Select(attrs=BaseFormStyle.form_control),
-            'enunciado': forms.Select(attrs=BaseFormStyle.form_control),
-        }
+        fields = ['texto',  'tipo_examen', 'modulo']
 
     def clean(self):
         cleaned_data = super().clean()
-        enunciado = cleaned_data.get('enunciado')
-        if enunciado and enunciado.preguntas_relacionadas.count() >= 3:
-            raise forms.ValidationError("Cada enunciado puede tener un máximo de 3 preguntas anidadas.")
+        # Asegurarse de que no es una pregunta anidada
+        if cleaned_data.get('enunciado'):
+            raise forms.ValidationError("No puedes asignar un enunciado a una pregunta simple.")
         return cleaned_data
 
 
+class PreguntaConEnunciadoForm(forms.ModelForm):
+    """Formulario para crear un enunciado con tres preguntas relacionadas."""
+
+    pregunta_1 = forms.CharField(label="Pregunta 1", widget=forms.Textarea)
+    pregunta_2 = forms.CharField(label="Pregunta 2", widget=forms.Textarea)
+    pregunta_3 = forms.CharField(label="Pregunta 3", widget=forms.Textarea)
+
+    class Meta:
+        model = Pregunta
+        fields = ['texto', 'activo', 'tipo_examen', 'modulo']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Validar que el campo 'enunciado' no esté definido ya que esta es una pregunta principal
+        if cleaned_data.get('enunciado'):
+            raise forms.ValidationError("Esta es una pregunta enunciado, no puede tener un enunciado padre.")
+        return cleaned_data
+
+    def save(self, commit=True):
+        # Crear el enunciado principal
+        enunciado = super().save(commit=False)
+        enunciado.save()
+
+        # Crear las 3 preguntas anidadas relacionadas con este enunciado
+        Pregunta.objects.create(
+            texto=self.cleaned_data['pregunta_1'],
+            activo=enunciado.activo,
+            tipo_examen=enunciado.tipo_examen,
+            modulo=enunciado.modulo,
+            enunciado=enunciado
+        )
+        Pregunta.objects.create(
+            texto=self.cleaned_data['pregunta_2'],
+            activo=enunciado.activo,
+            tipo_examen=enunciado.tipo_examen,
+            modulo=enunciado.modulo,
+            enunciado=enunciado
+        )
+        Pregunta.objects.create(
+            texto=self.cleaned_data['pregunta_3'],
+            activo=enunciado.activo,
+            tipo_examen=enunciado.tipo_examen,
+            modulo=enunciado.modulo,
+            enunciado=enunciado
+        )
+
+        return enunciado
+
 # Formulario para subir un archivo Excel
 class SubirPreguntasForm(forms.Form):
-    archivo = forms.FileField(label='Archivo Excel', required=True, widget=forms.ClearableFileInput(attrs=BaseFormStyle.form_control))
-
+    archivo = forms.FileField(
+        label='Archivo Excel',
+        required=True,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control'})
+    )
 
 # -------------------- FORMULARIO RESPUESTA --------------------
 
@@ -137,10 +175,9 @@ class RespuestaForm(forms.ModelForm):
         cleaned_data = super().clean()
         pregunta = cleaned_data.get('pregunta')
         es_correcta = cleaned_data.get('es_correcta')
-        letra = cleaned_data.get('letra')
 
         # Validar que no haya más de tres respuestas para la misma pregunta
-        numero_respuestas = Respuesta.objects.filter(pregunta=pregunta).count()
+        numero_respuestas = Respuesta.objects.filter(pregunta=pregunta).exclude(pk=self.instance.pk).count()
         if self.instance.pk is None and numero_respuestas >= 3:
             raise forms.ValidationError("No se pueden agregar más de tres respuestas a una pregunta.")
 
@@ -153,10 +190,20 @@ class RespuestaForm(forms.ModelForm):
 
     def save(self, *args, **kwargs):
         # Asignar letra automáticamente si no está asignada
-        if not self.cleaned_data['letra']:
-            numero_respuestas = Respuesta.objects.filter(pregunta=self.cleaned_data['pregunta']).count()
-            self.cleaned_data['letra'] = ['A', 'B', 'C'][numero_respuestas]
+        if not self.instance.letra:  # Usar self.instance en lugar de cleaned_data
+            numero_respuestas = Respuesta.objects.filter(pregunta=self.instance.pregunta).exclude(pk=self.instance.pk).count()
+            self.instance.letra = ['A', 'B', 'C'][numero_respuestas]
         return super().save(*args, **kwargs)
+
+
+# Inline formset para manejar las respuestas relacionadas a una pregunta
+RespuestaFormSet = inlineformset_factory(
+    Pregunta,
+    Respuesta,
+    form=RespuestaForm,
+    extra=3,  # Número de formularios adicionales
+    can_delete=True  # Permitir eliminar respuestas
+)
  
 #-----------------INSCRIPCION-----------------------------
 

@@ -98,7 +98,7 @@
 <body>
     <div class="container">
         <h1>Lista de Preguntas</h1>
-        <a href="{% url 'admin_panel:crear_pregunta' %}" class="btn btn-primary">Añadir Pregunta</a>
+        <a href="{% url 'admin_panel:pregunta_create' %}" class="btn btn-primary">Añadir Pregunta</a>
         <a href="{% url 'admin_panel:subir_preguntas' %}" class="button">Subir Preguntas</a>
         <table>
             <thead>
@@ -124,8 +124,8 @@
                         </ul>
                     </td>
                     <td class="actions">
-                        <a href="{% url 'admin_panel:editar_pregunta' pregunta.pk %}">Editar</a>
-                        <a href="{% url 'admin_panel:eliminar_pregunta' pregunta.pk %}">Eliminar</a>
+                        <a href="{% url 'admin_panel:pregunta_update' pregunta.pk %}">Editar</a>
+                        <a href="{% url 'admin_panel:pregunta_delete' pregunta.pk %}">Eliminar</a>
                     </td>
                 </tr>
                 {% endfor %}

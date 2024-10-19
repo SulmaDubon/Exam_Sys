@@ -1,25 +1,29 @@
-crear_pregunta.html
+<h2>{% if object %}Editar{% else %}Crear{% endif %} Pregunta</h2>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <title>Crear Pregunta</title>
-</head>
-<body>
-<div class="container mt-5">
-    <h2>Crear Pregunta</h2>
-    <form method="post">
-        {% csrf_token %}
-        <div class="form-group">
-            {{ form.as_p }}
-        </div>
-        <button type="submit" class="btn btn-primary">Guardar Pregunta</button>
-        <a href="{% url 'detalle_modulo' tipo_examen.id modulo.id %}" class="btn btn-secondary">Cancelar</a>
-    </form>
-</div>
-</body>
-</html>
-"""
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <h3>Respuestas</h3>
+    {{ respuestas.management_form }}  <!-- Esto es crucial para el formset -->
+    <table>
+        <thead>
+            <tr>
+                <th>Texto de la respuesta</th>
+                <th>¿Es correcta?</th>
+                <th>Letra</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for formset_form in respuestas %}
+                <tr>
+                    <td>{{ formset_form.texto }}</td>
+                    <td>{{ formset_form.es_correcta }}</td>
+                    <td>{{ formset_form.letra }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit">Guardar</button>
+</form>

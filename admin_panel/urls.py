@@ -5,11 +5,11 @@ from .views import (
     ListaUsuarios, CrearUsuario, EditarUsuario, EliminarUsuario,
     ListaExamenes, CrearExamen, EditarExamen, EliminarExamen,
     UsuariosInscritosView,
-    ListaPreguntas, CrearPreguntasView, EditarPregunta, EliminarPregunta,
+    ListaPreguntas, PreguntaCreateView, PreguntaConEnunciadoCreateView, PreguntaUpdateView, PreguntaDeleteView,
     AccionesExamenesView,
-    subir_preguntas, 
     TipoExamenListView, CrearTipoExamenView, EditarTipoExamenView, TipoExamenDeleteView,
-    get_modulos
+    get_modulos,
+    SubirPreguntasView
 )
 
 app_name = 'admin_panel'
@@ -32,11 +32,12 @@ urlpatterns = [
 
     # Preguntas
     path('preguntas/', ListaPreguntas.as_view(), name='lista_preguntas'),
-    path('preguntas/crear/', CrearPreguntasView.as_view(), name='crear_pregunta'),
-    path('preguntas/editar/<int:pk>/', EditarPregunta.as_view(), name='editar_pregunta'),
-    path('preguntas/eliminar/<int:pk>/', EliminarPregunta.as_view(), name='eliminar_pregunta'),
-    path('preguntas/subir/', subir_preguntas, name='subir_preguntas'),
-
+    path('preguntas/crear/', PreguntaCreateView.as_view(), name='pregunta_create'),
+    path('preguntas/crear-enunciado/', PreguntaConEnunciadoCreateView.as_view(), name='pregunta_create_enunciado'),
+    path('preguntas/editar/<int:pk>/', PreguntaUpdateView.as_view(), name='pregunta_update'),
+    path('preguntas/eliminar/<int:pk>/', PreguntaDeleteView.as_view(), name='pregunta_delete'),
+    path('preguntas/subir/', SubirPreguntasView.as_view(), name='subir_preguntas'),
+    
     # Tipo de Examenes
     path('tipo_examen/', TipoExamenListView.as_view(), name='lista_tipo_examen'),  # Corrigido nombre de la ruta
     path('tipo_examen/crear/', CrearTipoExamenView.as_view(), name='crear_tipo_examen'),

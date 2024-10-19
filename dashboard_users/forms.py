@@ -4,8 +4,14 @@ from django.forms import modelformset_factory, inlineformset_factory
 from django.contrib.auth.forms import PasswordChangeForm
 from .models import Examen, Pregunta, InscripcionExamen, Respuesta, TipoExamen, Modulo
 from django.db.models import Q 
+from django.db import models
 
-#--------------Formulario para crear o editar exámenes----------
+
+# Clase base para los estilos de widgets
+class BaseFormStyle:
+    form_control = {'class': 'form-control'}
+
+#--------------FORMULARIO PARA AGENDAR EXAMEN----------
 
 class ExamenForm(forms.ModelForm):
     class Meta:
@@ -26,120 +32,7 @@ class ExamenForm(forms.ModelForm):
             'aprobacion_minima': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 10}),
         }
 
-
-#---------------- Formulario para las respuestas asociadas a una pregunta
-
-class PreguntaForm(forms.ModelForm):
-    es_enunciado = forms.BooleanField(
-        label='¿Es un enunciado?', 
-        required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_es_enunciado'})
-    )
-    
-    class Meta:
-        model = Pregunta
-        fields = ['texto', 'tipo_examen', 'modulo', 'enunciado']
-        labels = {
-            'texto': 'Texto de la pregunta o enunciado',
-            'tipo_examen': 'Tipo de Examen',
-            'modulo': 'Módulo asociado',
-            'enunciado': 'Enunciado (opcional)',
-        }
-        widgets = {
-            'texto': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'tipo_examen': forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo_examen'}),
-            'modulo': forms.Select(attrs={'class': 'form-control', 'id': 'id_modulo'}),
-            'enunciado': forms.Select(attrs={'class': 'form-control', 'empty_label': 'Sin enunciado'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['modulo'].queryset = Modulo.objects.none()
-
-        if 'tipo_examen' in self.data:
-            try:
-                tipo_examen_id = int(self.data.get('tipo_examen'))
-                self.fields['modulo'].queryset = Modulo.objects.filter(tipo_examen_id=tipo_examen_id)
-            except (ValueError, TypeError):
-                pass
-        elif self.instance.pk:
-            self.fields['modulo'].queryset = self.instance.tipo_examen.modulo_set.all()
-
-
-
-# Formulario para respuestas asociadas a una pregunta
-class RespuestaForm(forms.ModelForm):
-    class Meta:
-        model = Respuesta
-        fields = ['texto', 'es_correcta']
-        labels = {
-            'texto': 'Texto de la respuesta',
-            'es_correcta': '¿Es la respuesta correcta?',
-        }
-        widgets = {
-            'texto': forms.TextInput(attrs={'class': 'form-control'}),
-            'es_correcta': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-
-# Formset para las respuestas
-RespuestaFormSet = inlineformset_factory(
-    Pregunta,
-    Respuesta,
-    form=RespuestaForm,
-    extra=3,
-    max_num=3,
-    can_delete=False,
-)
-
-
-
-# Formulario para subir un archivo Excel
-class SubirPreguntasForm(forms.Form):
-    archivo = forms.FileField(label='Archivo Excel', required=True)
-
-
-#----------------------------------------------
-#                INSCRIPCION
-#------------------------------------------------
-
-# Formulario inscripcion de examen
-
-class InscripcionExamenForm(forms.ModelForm):
-    class Meta:
-        model = InscripcionExamen
-        fields = ['examen']  # Aquí incluimos el campo examen
-        widgets = {
-            'examen': forms.Select(attrs={'class': 'form-control'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # Obtener el usuario actual
-        super().__init__(*args, **kwargs)
-
-        # Filtrar los exámenes disponibles para el usuario
-        self.fields['examen'].queryset = Examen.objects.filter(
-            Q(fecha__gt=timezone.now().date()) | 
-            (Q(fecha=timezone.now().date()) & Q(hora__gt=timezone.now().time()))
-        ).exclude(inscripcionexamen__usuario=user)  # Excluir exámenes ya inscritos
-
-
-
-
-# Formulario para cambiar contraseña
-class CambiarContrasenaForm(PasswordChangeForm):
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user')
-        super().__init__(self.user, *args, **kwargs)
-        self.fields['old_password'].widget.attrs.update({'class': 'form-control'})
-        self.fields['new_password1'].widget.attrs.update({'class': 'form-control'})
-        self.fields['new_password2'].widget.attrs.update({'class': 'form-control'})
-
-
-
-# Clase base para los estilos de widgets
-class BaseFormStyle:
-    form_control = {'class': 'form-control'}
-
+# -------------------- FORMULARIO TIPO DE EXAMEN --------------------
 # Formulario para el modelo TipoExamen
 class TipoExamenForm(forms.ModelForm):
     class Meta:
@@ -161,11 +54,12 @@ class TipoExamenForm(forms.ModelForm):
             raise forms.ValidationError('El tiempo límite debe ser un número positivo.')
         return tiempo_limite
 
+# -------------------- FORMULARIO MODULO --------------------
 # Formulario para el modelo Modulo
 class ModuloForm(forms.ModelForm):
     class Meta:
         model = Modulo
-        fields = ['nombre', 'cantidad_preguntas']
+        fields = ['nombre', 'cantidad_preguntas', 'tipo_examen']
         labels = {
             'nombre': 'Nombre del módulo',
             'cantidad_preguntas': 'Cantidad de preguntas'
@@ -184,3 +78,120 @@ ModuloFormSet = inlineformset_factory(
     extra=1,  # Número de formularios adicionales a mostrar por defecto
     can_delete=True  # Habilitar la opción de eliminar formularios
 )
+
+# -------------------- FORMULARIO PREGUNTA --------------------
+
+# Formulario para crear una pregunta
+class PreguntaForm(forms.ModelForm):
+    class Meta:
+        model = Pregunta
+        fields = ['texto', 'activo', 'tipo_examen', 'modulo', 'enunciado']
+        labels = {
+            'texto': 'Texto de la pregunta',
+            'activo': '¿Está activa?',
+            'tipo_examen': 'Tipo de examen',
+            'modulo': 'Módulo',
+            'enunciado': 'Enunciado relacionado (opcional)'
+        }
+        widgets = {
+            'texto': forms.TextInput(attrs=BaseFormStyle.form_control),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'tipo_examen': forms.Select(attrs=BaseFormStyle.form_control),
+            'modulo': forms.Select(attrs=BaseFormStyle.form_control),
+            'enunciado': forms.Select(attrs=BaseFormStyle.form_control),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        enunciado = cleaned_data.get('enunciado')
+        if enunciado and enunciado.preguntas_relacionadas.count() >= 3:
+            raise forms.ValidationError("Cada enunciado puede tener un máximo de 3 preguntas anidadas.")
+        return cleaned_data
+
+
+# Formulario para subir un archivo Excel
+class SubirPreguntasForm(forms.Form):
+    archivo = forms.FileField(label='Archivo Excel', required=True, widget=forms.ClearableFileInput(attrs=BaseFormStyle.form_control))
+
+
+# -------------------- FORMULARIO RESPUESTA --------------------
+
+class RespuestaForm(forms.ModelForm):
+    class Meta:
+        model = Respuesta
+        fields = ['pregunta', 'texto', 'es_correcta', 'letra']
+        labels = {
+            'pregunta': 'Pregunta relacionada',
+            'texto': 'Texto de la respuesta',
+            'es_correcta': '¿Es la respuesta correcta?',
+            'letra': 'Letra de la respuesta (opcional)'
+        }
+        widgets = {
+            'pregunta': forms.Select(attrs=BaseFormStyle.form_control),
+            'texto': forms.TextInput(attrs=BaseFormStyle.form_control),
+            'es_correcta': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'letra': forms.Select(attrs=BaseFormStyle.form_control),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        pregunta = cleaned_data.get('pregunta')
+        es_correcta = cleaned_data.get('es_correcta')
+        letra = cleaned_data.get('letra')
+
+        # Validar que no haya más de tres respuestas para la misma pregunta
+        numero_respuestas = Respuesta.objects.filter(pregunta=pregunta).count()
+        if self.instance.pk is None and numero_respuestas >= 3:
+            raise forms.ValidationError("No se pueden agregar más de tres respuestas a una pregunta.")
+
+        # Asegurarse de que solo una respuesta sea marcada como correcta
+        if es_correcta:
+            if Respuesta.objects.filter(pregunta=pregunta, es_correcta=True).exclude(pk=self.instance.pk).exists():
+                raise forms.ValidationError("Solo una respuesta puede ser la correcta para cada pregunta.")
+
+        return cleaned_data
+
+    def save(self, *args, **kwargs):
+        # Asignar letra automáticamente si no está asignada
+        if not self.cleaned_data['letra']:
+            numero_respuestas = Respuesta.objects.filter(pregunta=self.cleaned_data['pregunta']).count()
+            self.cleaned_data['letra'] = ['A', 'B', 'C'][numero_respuestas]
+        return super().save(*args, **kwargs)
+ 
+#-----------------INSCRIPCION-----------------------------
+
+# Formulario inscripcion de examen
+
+class InscripcionExamenForm(forms.ModelForm):
+    class Meta:
+        model = InscripcionExamen
+        fields = ['examen']  # Aquí incluimos el campo examen
+        widgets = {
+            'examen': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  # Obtener el usuario actual
+        super().__init__(*args, **kwargs)
+
+        # Filtrar los exámenes disponibles para el usuario
+        self.fields['examen'].queryset = Examen.objects.filter(
+            Q(fecha__gt=timezone.now().date()) | 
+            (Q(fecha=timezone.now().date()) & Q(hora__gt=timezone.now().time()))
+        ).exclude(inscripcionexamen__usuario=user)  # Excluir exámenes ya inscritos
+
+#-----------------CAMBIAR CONTRASEÑA-----------------------------
+# Formulario para cambiar contraseña
+class CambiarContrasenaForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user')
+        super().__init__(self.user, *args, **kwargs)
+        self.fields['old_password'].widget.attrs.update({'class': 'form-control'})
+        self.fields['new_password1'].widget.attrs.update({'class': 'form-control'})
+        self.fields['new_password2'].widget.attrs.update({'class': 'form-control'})
+
+
+
+
+
+

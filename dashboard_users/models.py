@@ -7,6 +7,7 @@ from users.models import CustomUser
 def default_exam_time():
     return timezone.now().time()
 
+
 # --------------- CONFIGURACION TIPO DE EXAMEN---------------
 class TipoExamen(models.Model):
     nombre = models.CharField(max_length=255, unique=True)
@@ -26,6 +27,73 @@ class Modulo(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.cantidad_preguntas} preguntas"
+
+
+#------------------- PREGUNTA ----------------------------------------
+
+class Pregunta(models.Model):
+    texto = models.TextField()  # El texto de la pregunta o enunciado
+    activo = models.BooleanField(default=True)
+    tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='preguntas')  # Asociación directa al tipo de examen
+    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='preguntas')  # Asociar a módulo
+    enunciado = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='preguntas_relacionadas'
+    )  # Relación para preguntas anidadas
+
+    def es_enunciado(self):
+        """Determina si la pregunta es un enunciado (sin estar relacionada a otro enunciado)."""
+        return self.enunciado is None
+
+    def save(self, *args, **kwargs):
+        if self.enunciado:
+            # Verificar que no existan más de 3 preguntas anidadas para un enunciado
+            if self.enunciado.preguntas_relacionadas.count() >= 3:
+                raise ValueError("Cada enunciado puede tener un máximo de 3 preguntas anidadas.")
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        if self.es_enunciado():
+            return f"Enunciado: {self.texto} (Módulo: {self.modulo.nombre}, Tipo de Examen: {self.tipo_examen.nombre})"
+        else:
+            return f"Pregunta: {self.texto} (Módulo: {self.modulo.nombre}, Tipo de Examen: {self.tipo_examen.nombre})"
+
+#----------------------- RESPUESTAS ----------------------------
+
+class Respuesta(models.Model):
+    LETRA_CHOICES = [
+        ('A', 'A'),
+        ('B', 'B'),
+        ('C', 'C'),
+    ]
+
+    pregunta = models.ForeignKey(Pregunta, on_delete=models.CASCADE, related_name='respuestas')
+    texto = models.CharField(max_length=255)
+    es_correcta = models.BooleanField(default=False)
+    letra = models.CharField(max_length=1, choices=LETRA_CHOICES, blank=True)
+
+    def save(self, *args, **kwargs):
+        # Validar que no haya más de tres respuestas para la misma pregunta
+        numero_respuestas = Respuesta.objects.filter(pregunta=self.pregunta).count()
+        if numero_respuestas >= 3:
+            raise ValueError("No se pueden agregar más de tres respuestas a una pregunta.")
+
+        # Asignar letra automáticamente si no está asignada
+        if not self.letra:
+            self.letra = ['A', 'B', 'C'][numero_respuestas]
+
+        # Asegurarse de que solo una respuesta sea marcada como correcta
+        if self.es_correcta:
+            if Respuesta.objects.filter(pregunta=self.pregunta, es_correcta=True).exists():
+                raise ValueError("Solo una respuesta puede ser la correcta para cada pregunta.")
+        
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Respuesta {self.letra}: {self.texto} (Correcta: {self.es_correcta})"
 
 #-------------------- AGENDA EXAMEN --------------------------------
 
@@ -47,62 +115,10 @@ class Examen(models.Model):
     def __str__(self):
         return f"{self.tipo_examen.nombre}: Examen el {self.fecha} a las {self.hora}"
 
-#------------------- PREGUNTA ----------------------------------------
-
-class Pregunta(models.Model):
-    texto = models.TextField()  # El texto de la pregunta o enunciado
-    activo = models.BooleanField(default=True)
-    tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='preguntas')  # Asociación directa al tipo de examen
-    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='preguntas')  # Asociar a módulo
-    enunciado = models.ForeignKey(
-        'self', 
-        on_delete=models.CASCADE, 
-        null=True, 
-        blank=True, 
-        related_name='preguntas_relacionadas'
-    )  # Relación para preguntas anidadas
-
-    def es_enunciado(self):
-        """Determina si la pregunta es un enunciado (sin estar relacionada a otro enunciado)."""
-        return self.enunciado is None
-
-    def __str__(self):
-        if self.es_enunciado():
-            return f"Enunciado: {self.texto} (Módulo: {self.modulo.nombre}, Tipo de Examen: {self.tipo_examen.nombre})"
-        else:
-            return f"Pregunta: {self.texto} (Módulo: {self.modulo.nombre}, Tipo de Examen: {self.tipo_examen.nombre})"
 
 
-#----------------------- RESPUESTAS ----------------------------
 
-class Respuesta(models.Model):
-    LETRA_CHOICES = [
-        ('A', 'A'),
-        ('B', 'B'),
-        ('C', 'C'),
-    ]
 
-    pregunta = models.ForeignKey(Pregunta, on_delete=models.CASCADE, related_name='respuestas')
-    texto = models.CharField(max_length=255)
-    es_correcta = models.BooleanField(default=False)
-    letra = models.CharField(max_length=1, choices=LETRA_CHOICES, blank=True)
-
-    def save(self, *args, **kwargs):
-        if not self.letra:
-            # Obtener el número de respuestas existentes para la pregunta
-            numero_respuestas = Respuesta.objects.filter(pregunta=self.pregunta).count()
-
-            # Asignar letra secuencialmente (A, B o C)
-            if numero_respuestas < 3:
-                self.letra = ['A', 'B', 'C'][numero_respuestas]
-            else:
-                raise ValueError("No se pueden agregar más de tres respuestas a una pregunta.")
-        
-        super().save(*args, **kwargs)  # Guardar la respuesta
-
-    def __str__(self):
-        return f"Respuesta {self.letra}: {self.texto} (Correcta: {self.es_correcta})"
-    
 
 #----------------------- INSCRIPCION ----------------------------------
 
@@ -162,3 +178,6 @@ class UserExam(models.Model):
             self.nota = 0
         self.save()
         self.actualizar_estado()
+
+
+

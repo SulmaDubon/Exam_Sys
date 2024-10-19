@@ -9,7 +9,7 @@ from django.utils.decorators import method_decorator
 import pandas as pd
 from users.models import CustomUser
 from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen
-from dashboard_users.forms import ExamenForm, PreguntaForm, SubirPreguntasForm, TipoExamenForm, ModuloFormSet, RespuestaFormSet   # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.forms import ExamenForm, SubirPreguntasForm, TipoExamenForm, ModuloFormSet, SubirPreguntasForm, PreguntaSimpleForm, PreguntaConEnunciadoForm  # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
@@ -240,97 +240,38 @@ class ListaPreguntas(ListView):
         
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
-
-class CrearPreguntasView(FormView):
-    template_name = 'admin_panel/formulario_preguntas.html'
-    form_class = PreguntaForm
+# Crear pregunta simple
+class PreguntaCreateView(CreateView):
+    model = Pregunta
+    form_class = PreguntaSimpleForm
+    template_name = 'admin_panel/form_pregunta.html'
     success_url = reverse_lazy('admin_panel:lista_preguntas')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if self.request.POST:
-            context['respuesta_formset'] = RespuestaFormSet(self.request.POST)
-        else:
-            context['respuesta_formset'] = RespuestaFormSet()
-        return context
 
-    def form_valid(self, form):
-        respuesta_formset = RespuestaFormSet(self.request.POST)
-        
-        if form.is_valid() and respuesta_formset.is_valid():
-            # Guardar la pregunta principal (individual o enunciado)
-            pregunta = form.save()
-
-            # Si es un enunciado, se manejará a nivel de modelo
-            if form.cleaned_data.get('es_enunciado'):
-                # Si la pregunta es un enunciado, no necesitamos respuestas inmediatas, pero podrías agregar lógica adicional aquí si es necesario
-                pass
-            else:
-                # Si es una pregunta individual, guardar las respuestas
-                respuesta_formset.instance = pregunta
-                respuesta_formset.save()
-            
-            return super().form_valid(form)
-        
-        # Si algo falla, renderiza el formulario con errores
-        return self.form_invalid(form)
-
-
+@method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
+# Crear pregunta con enunciado
+class PreguntaConEnunciadoCreateView(CreateView):
+    model = Pregunta
+    form_class = PreguntaConEnunciadoForm
+    template_name = 'admin_panel/form_pregunta_enunciado.html'
+    success_url = reverse_lazy('admin_panel:lista_preguntas')
 
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
-class EditarPregunta(UpdateView):
+
+# Editar pregunta
+class PreguntaUpdateView(UpdateView):
     model = Pregunta
-    form_class = PreguntaForm
-    template_name = 'admin_panel/formulario_pregunta.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if self.request.POST:
-            context['formset'] = RespuestaFormSet(self.request.POST, instance=self.object)
-            context['pregunta_formset'] = PreguntaDerivadaFormSet(self.request.POST, instance=self.object)
-        else:
-            context['formset'] = RespuestaFormSet(instance=self.object)
-            context['pregunta_formset'] = PreguntaDerivadaFormSet(instance=self.object)
-        return context
-
-    def form_valid(self, form):
-        formset = RespuestaFormSet(self.request.POST, instance=self.object)
-        pregunta_formset = PreguntaDerivadaFormSet(self.request.POST, instance=self.object)
-
-        if form.is_valid():
-            pregunta = form.save()
-            # Si la pregunta tiene un enunciado, actualizamos las preguntas derivadas
-            if pregunta.enunciado:
-                if pregunta_formset.is_valid():
-                    preguntas_derivadas = pregunta_formset.save(commit=False)
-                    for pregunta_derivada in preguntas_derivadas:
-                        pregunta_derivada.enunciado = pregunta
-                        pregunta_derivada.save()
-                        # Guardar respuestas para las preguntas derivadas
-                        for respuesta_formset in RespuestaFormSet(self.request.POST, instance=pregunta_derivada):
-                            if respuesta_formset.is_valid():
-                                respuesta_formset.save()
-            else:
-                if formset.is_valid():
-                    formset.save()
-            
-            return super().form_valid(form)
-        else:
-            return self.form_invalid(form)
-
-    def get_success_url(self):
-        return reverse_lazy('admin_panel:lista_preguntas')
+    form_class = PreguntaSimpleForm  # Puedes usar lógica adicional para elegir entre simple o con enunciado
+    template_name = 'admin_panel/form_pregunta.html'
+    success_url = reverse_lazy('admin_panel:lista_preguntas')
 
 
-
-@method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
-class EliminarPregunta(DeleteView):
+# Eliminar pregunta
+class PreguntaDeleteView(DeleteView):
     model = Pregunta
-    template_name = 'admin_panel/confirmar_eliminacion_pregunta.html'
-
-    def get_success_url(self):
-        return reverse_lazy('admin_panel:lista_preguntas')
+    template_name = 'admin_panel/confirmar_eliminar.html'
+    success_url = reverse_lazy('admin_panel:lista_preguntas')
 
 
 def subir_preguntas(request):

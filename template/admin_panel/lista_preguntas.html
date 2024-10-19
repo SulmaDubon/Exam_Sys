@@ -1,191 +1,151 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Preguntas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #007bff;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        .button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table th, table td {
+            padding: 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        table th {
+            background-color: #007bff;
+            color: #fff;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        ul li {
+            margin-bottom: 5px;
+        }
+        .actions a {
+            margin-right: 10px;
+            text-decoration: none;
+            color: #007bff;
+            transition: color 0.3s ease;
+        }
+        .actions a:hover {
+            color: #0056b3;
+        }
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .pagination span {
+            display: inline-block;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 0 5px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .pagination a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        .pagination a:hover {
+            color: #0056b3;
+        }
+        .pagination .current {
+            background-color: #007bff;
+            color: #fff;
+            border: 1px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lista de Preguntas</h1>
+        <a href="{% url 'admin_panel:crear_pregunta' %}" class="btn btn-primary">Añadir Pregunta</a>
+        <a href="{% url 'admin_panel:subir_preguntas' %}" class="button">Subir Preguntas</a>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Texto de la Pregunta</th>
+                    <th>Respuestas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pregunta in preguntas %}
+                <tr>
+                    <td>{{ pregunta.id }}</td>
+                    <td>{{ pregunta.texto }}</td>
+                    <td>
+                        <ul>
+                            <li><strong>Correcta:</strong> {{ pregunta.respuesta_correcta }}</li>
+                            <li><strong>1:</strong> {{ pregunta.respuesta1 }}</li>
+                            <li><strong>2:</strong> {{ pregunta.respuesta2 }}</li>
+                            <li><strong>3:</strong> {{ pregunta.respuesta3 }}</li>
+                            <li><strong>4:</strong> {{ pregunta.respuesta4 }}</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <a href="{% url 'admin_panel:editar_pregunta' pregunta.pk %}">Editar</a>
+                        <a href="{% url 'admin_panel:eliminar_pregunta' pregunta.pk %}">Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
-{% block title %}Formulario de Pregunta{% endblock %}
+        <!-- Navegación de Paginación -->
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">&laquo; Primera</a>
+                <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            {% endif %}
 
-{% block content %}
-<div class="admin-container">
-    <h1>Formulario de Pregunta</h1>
-    <form method="post">
-        {% csrf_token %}
-        
-        <!-- Tipo de Examen -->
-        <div class="form-group">
-            <label for="id_tipo_examen">Tipo de Examen:</label>
-            {{ form.tipo_examen }}
+            <span class="current">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
+            {% endif %}
         </div>
-
-        <!-- Módulo, se actualizará según el tipo de examen seleccionado -->
-        <div class="form-group">
-            <label for="id_modulo">Módulo asociado:</label>
-            {{ form.modulo }}
-        </div>
-
-        <!-- Checkbox para decidir si usar enunciado -->
-        <div class="form-group">
-            <label for="usar_enunciado">¿Usar enunciado?</label>
-            <input type="checkbox" id="usar_enunciado">
-        </div>
-
-        <!-- Campo para el enunciado (se muestra solo si el checkbox está marcado) -->
-        <div id="enunciado-container" style="display: none;">
-            <div class="form-group">
-                <label for="id_enunciado">Enunciado:</label>
-                {{ form.enunciado }}
-            </div>
-
-            <h3>Preguntas derivadas</h3>
-            {{ pregunta_formset.management_form }}
-            {% for pregunta_form in pregunta_formset %}
-                <div class="form-group pregunta-derivada">
-                    {{ pregunta_form.as_p }} <!-- Formulario para cada pregunta derivada -->
-                    <h4>Respuestas</h4>
-                    {{ respuesta_formset_list.forloop.counter0.management_form }}
-                    {% for respuesta_form in respuesta_formset_list.forloop.counter0 %}
-                        <div class="respuesta-group">
-                            {{ respuesta_form.as_p }} <!-- Respuestas para la pregunta derivada -->
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endfor %}
-        </div>
-
-        <!-- Si no se selecciona el enunciado, mostramos el texto de la pregunta y sus respuestas -->
-        <div id="pregunta-container">
-            <div class="form-group">
-                <label for="id_texto">Texto de la pregunta:</label>
-                {{ form.texto }}
-            </div>
-
-            <h4>Respuestas</h4>
-            {{ formset.management_form }}
-            {% for respuesta_form in formset %}
-                <div class="respuesta-group">
-                    {{ respuesta_form.as_p }}
-                </div>
-            {% endfor %}
-        </div>
-
-        <!-- Botones de guardar y cancelar -->
-        <div class="button-container">
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a href="{% url 'admin_panel:lista_preguntas' %}" class="btn btn-secondary">Cancelar</a>
-        </div>
-    </form>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const tipoExamenSelect = document.getElementById('id_tipo_examen');
-        const moduloSelect = document.getElementById('id_modulo');
-        const usarEnunciadoCheckbox = document.getElementById('usar_enunciado');
-        const enunciadoContainer = document.getElementById('enunciado-container');
-        const preguntaContainer = document.getElementById('pregunta-container');
-
-        // Función para actualizar el select de módulos según el tipo de examen seleccionado
-        tipoExamenSelect.addEventListener('change', function () {
-            const tipoExamenId = this.value;
-            if (tipoExamenId) {
-                fetch(`/get-modulos/${tipoExamenId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Limpiar el select de módulos
-                        moduloSelect.innerHTML = '';
-
-                        // Agregar las nuevas opciones de módulos
-                        data.modulos.forEach(modulo => {
-                            const option = document.createElement('option');
-                            option.value = modulo.id;
-                            option.textContent = modulo.nombre;
-                            moduloSelect.appendChild(option);
-                        });
-                    });
-            } else {
-                // Limpiar el select si no se ha seleccionado ningún tipo de examen
-                moduloSelect.innerHTML = '';
-            }
-        });
-
-        // Mostrar u ocultar el enunciado y las preguntas derivadas
-        usarEnunciadoCheckbox.addEventListener('change', function () {
-            if (this.checked) {
-                enunciadoContainer.style.display = 'block';
-                preguntaContainer.style.display = 'none';
-            } else {
-                enunciadoContainer.style.display = 'none';
-                preguntaContainer.style.display = 'block';
-            }
-        });
-    });
-</script>
-{% endblock %}
-
-{% block head %}
-<style>
-    .admin-container {
-        padding: 20px;
-        max-width: 800px;
-        margin: auto;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    h1 {
-        color: #333;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    .form-group {
-        margin-bottom: 15px;
-    }
-    label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-    input[type="text"], textarea, select {
-        padding: 10px;
-        width: calc(100% - 22px);
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        margin-bottom: 10px;
-    }
-    .respuesta-group {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-    .respuesta-group input[type="radio"] {
-        margin-right: 10px;
-    }
-    .respuesta-group label {
-        flex-grow: 1;
-    }
-    .button-container {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 20px;
-    }
-    .btn-primary {
-        background-color: #007bff;
-        border: none;
-        color: #fff;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-    .btn-secondary {
-        background-color: #6c757d;
-        border: none;
-        color: #fff;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-    .error {
-        color: red;
-        font-size: 0.875em;
-    }
-</style>
-{% endblock %}
+    </div>
+</body>
+</html>

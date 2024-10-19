@@ -1,37 +1,25 @@
+crear_pregunta.html
+
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Agregar Pregunta</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Crear Pregunta</title>
 </head>
 <body>
-    <h2>Agregar Pregunta</h2>
+<div class="container mt-5">
+    <h2>Crear Pregunta</h2>
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
-        <div id="respuesta-formset">
-            <h3>Respuestas</h3>
-            {{ respuesta_formset.management_form }}
-            {% for form in respuesta_formset %}
-                {{ form.as_p }}
-            {% endfor %}
+        <div class="form-group">
+            {{ form.as_p }}
         </div>
-        <button type="submit">Guardar</button>
+        <button type="submit" class="btn btn-primary">Guardar Pregunta</button>
+        <a href="{% url 'detalle_modulo' tipo_examen.id modulo.id %}" class="btn btn-secondary">Cancelar</a>
     </form>
-    <a href="{% url 'admin_panel:lista_preguntas' %}">Volver a la lista de preguntas</a>
-
-    <script>
-        $(document).ready(function() {
-            // Mostrar/ocultar respuestas según si es un enunciado
-            $('#id_es_enunciado').change(function() {
-                if ($(this).is(':checked')) {
-                    $('#respuesta-formset').hide();
-                } else {
-                    $('#respuesta-formset').show();
-                }
-            }).trigger('change'); // Ejecutar al cargar la página
-        });
-    </script>
+</div>
 </body>
 </html>
-
+"""

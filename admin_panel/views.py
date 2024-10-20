@@ -1,4 +1,5 @@
 # admin_panel/views.py
+import random
 from django.forms import ValidationError, formset_factory
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
@@ -8,13 +9,14 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 import openpyxl
 import pandas as pd
+from dashboard_users.tasks import generar_examen_para_usuarios
 from users.models import CustomUser
 from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen
 from dashboard_users.forms import ExamenForm, RespuestaFormSet,  TipoExamenForm, ModuloFormSet, SubirPreguntasForm, PreguntaSimpleForm, PreguntaConEnunciadoForm  # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.urls import reverse
@@ -163,6 +165,82 @@ class CrearExamen(CreateView):
     form_class = ExamenForm
     template_name = 'admin_panel/formulario_examen.html'
     success_url = reverse_lazy('admin_panel:lista_examenes')
+
+    def form_valid(self, form):
+        # Guardar el examen primero
+        response = super().form_valid(form)
+        examen = self.object
+
+         # Programar la tarea para generar los UserExam 5 minutos antes de la hora de inicio del examen
+        generar_examen_para_usuarios(examen.id, schedule=examen.fecha - timedelta(minutes=5))
+
+        messages.success(self.request, f'El examen "{examen.nombre}" se ha creado y los exámenes para los usuarios serán generados 5 minutos antes de la hora de inicio.')
+        return response
+
+        # Seleccionar preguntas al azar respetando los módulos
+        preguntas_seleccionadas = []
+        for modulo in examen.tipo_examen.modulos.all():
+            preguntas_simples = list(Pregunta.objects.filter(modulo=modulo, enunciado__isnull=True, preguntas_relacionadas__isnull=True))
+            enunciados = list(Pregunta.objects.filter(modulo=modulo, enunciado__isnull=True, preguntas_relacionadas__isnull=False).distinct())
+
+            total_preguntas_requeridas = modulo.cantidad_preguntas
+            cantidad_anidadas_max = len(enunciados)
+            cantidad_simples_max = len(preguntas_simples)
+
+            # Intentar distribuir las preguntas de forma balanceada entre simples y anidadas
+            cantidad_anidadas = min(cantidad_anidadas_max, total_preguntas_requeridas // 2)
+            cantidad_simples = min(cantidad_simples_max, total_preguntas_requeridas - cantidad_anidadas)
+
+            # Si no hay suficientes preguntas simples, ajustar con preguntas anidadas
+            if cantidad_simples < total_preguntas_requeridas // 2:
+                cantidad_anidadas = min(cantidad_anidadas_max, total_preguntas_requeridas - cantidad_simples)
+
+            # Si no hay suficientes preguntas anidadas, ajustar con preguntas simples
+            if cantidad_anidadas < total_preguntas_requeridas // 2:
+                cantidad_simples = min(cantidad_simples_max, total_preguntas_requeridas - cantidad_anidadas)
+
+            # Seleccionar preguntas simples
+            if cantidad_simples > 0 and cantidad_simples_max > 0:
+                preguntas_simples_seleccionadas = random.sample(preguntas_simples, cantidad_simples)
+                preguntas_seleccionadas.extend(preguntas_simples_seleccionadas)
+
+            # Seleccionar preguntas anidadas, asegurando que se incluyan tanto los enunciados como las preguntas relacionadas
+            if cantidad_anidadas > 0 and cantidad_anidadas_max > 0:
+                enunciados_seleccionados = random.sample(enunciados, cantidad_anidadas)
+                for enunciado in enunciados_seleccionados:
+                    if enunciado not in preguntas_seleccionadas:
+                        preguntas_seleccionadas.append(enunciado)
+                        preguntas_relacionadas = list(enunciado.preguntas_relacionadas.all())
+                        preguntas_seleccionadas.extend(preguntas_relacionadas[:3])  # Limitar a 3 preguntas relacionadas
+
+        # Asegurar que el número de preguntas seleccionadas no exceda el total requerido por el módulo
+        preguntas_seleccionadas_por_modulo = {}
+        for pregunta in preguntas_seleccionadas:
+            modulo = pregunta.modulo
+            if modulo not in preguntas_seleccionadas_por_modulo:
+                preguntas_seleccionadas_por_modulo[modulo] = []
+            preguntas_seleccionadas_por_modulo[modulo].append(pregunta)
+
+        preguntas_finales = []
+        for modulo, preguntas in preguntas_seleccionadas_por_modulo.items():
+            preguntas_finales.extend(preguntas[:modulo.cantidad_preguntas])
+
+        # Guardar las preguntas seleccionadas en el examen
+        if preguntas_finales:
+            examen.preguntas.set(preguntas_finales)
+        else:
+            messages.error(self.request, 'Insuficientes preguntas para este examen. El examen se ha guardado, pero no tiene suficientes preguntas.')
+
+        messages.success(self.request, f'Se han asignado {len(preguntas_finales)} preguntas al examen.')
+        return response
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Hubo un error al crear el examen. Por favor, revisa los datos ingresados.')
+        return super().form_invalid(form)
+
+
+
+
 
 # Vista para editar un examen existente
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')

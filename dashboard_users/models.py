@@ -35,7 +35,7 @@ class Pregunta(models.Model):
     texto = models.TextField()  # El texto de la pregunta o enunciado
     activo = models.BooleanField(default=True)
     tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='preguntas')  # Asociación directa al tipo de examen
-    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='preguntas')  # Asociar a módulo
+    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='preguntas', null=False)  # Asociar a módulo
     enunciado = models.ForeignKey(
         'self',
         on_delete=models.CASCADE,
@@ -104,7 +104,7 @@ class Examen(models.Model):
     usuarios = models.ManyToManyField(CustomUser, through='InscripcionExamen')
     tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='examenes')  # Relación con TipoExamen
     aprobacion_minima = models.FloatField(default=6.0, verbose_name="Nota mínima para aprobar")
-    preguntas = models.ManyToManyField('Pregunta', blank=True, related_name='examenes')  # Añadir campo para guardar preguntas seleccionadas
+    preguntas = models.ManyToManyField('Pregunta', blank=True, related_name='examenes', verbose_name="Preguntas del examen")
 
     def obtener_tiempo_limite(self):
         """Devuelve el tiempo límite del examen en formato HH:MM basado en el tipo de examen."""

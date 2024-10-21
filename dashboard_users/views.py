@@ -107,8 +107,11 @@ class GenerarExamenView(View):
         context = {
             'user_exam': user_exam,
             'pagina_actual': pagina_actual,
-            'examen': user_exam.examen,
-            'usuario': request.user,
+            'nombre_examen': user_exam.examen.nombre,
+            'nombre_usuario': f"{request.user.first_name} {request.user.last_name}",
+            'cedula': request.user.cedula,
+            'correo': request.user.email,
+            'modulo_actual': pagina_actual.object_list[0].modulo if pagina_actual.object_list else None,
         }
 
         return render(request, self.template_name, context)
@@ -124,7 +127,7 @@ class GenerarExamenView(View):
         # Guardar las respuestas enviadas para las preguntas de la página actual
         pagina_actual = Paginator(user_exam.preguntas.all(), 20).get_page(page)
         for pregunta in pagina_actual:
-            respuesta_usuario = request.POST.get(f'pregunta_{pregunta.id}', None)
+            respuesta_usuario = request.POST.get(f'respuesta_{pregunta.id}', None)
             if respuesta_usuario:
                 user_exam.respuestas[str(pregunta.id)] = respuesta_usuario
 
@@ -137,17 +140,15 @@ class GenerarExamenView(View):
             messages.success(request, 'Has completado el examen.')
             return redirect('dashboard_users:resultados')
 
-        # Redirigir a la siguiente página del examen
-        next_page = page + 1
-        if page < Paginator(user_exam.preguntas.all(), 20).num_pages:
-            return redirect('dashboard_users:generar_examen', examen_id=user_exam.examen.id, page=next_page)
+        # Verificar si el usuario presionó "anterior" o "siguiente"
+        if 'anterior' in request.POST and pagina_actual.has_previous():
+            return redirect('dashboard_users:generar_examen', examen_id=user_exam.id, page=pagina_actual.previous_page_number())
+        elif 'siguiente' in request.POST and pagina_actual.has_next():
+            return redirect('dashboard_users:generar_examen', examen_id=user_exam.id, page=pagina_actual.next_page_number())
 
-        # Si es la última página, finalizar el examen
-        user_exam.finalizado = True
-        user_exam.fecha_envio = timezone.now()
-        user_exam.save()
-        messages.success(request, 'Examen finalizado correctamente.')
-        return redirect('dashboard_users:resultados')
+        # Redirigir al dashboard si algo sale mal
+        return redirect('dashboard_users:dashboard')
+
 
 
 
@@ -190,6 +191,7 @@ class InscripcionExamenView(LoginRequiredMixin, TemplateView):
             messages.error(request, 'Ha ocurrido un error al inscribirte en el examen.')
             # Renderizar la misma página con el formulario inválido y sus errores
             return self.render_to_response(self.get_context_data(form=form))
+          
         
 #------------------------------
 #   Resultados

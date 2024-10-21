@@ -81,83 +81,36 @@ ModuloFormSet = inlineformset_factory(
 
 # -------------------- FORMULARIO PREGUNTA --------------------
 
-class PreguntaSimpleForm(forms.ModelForm):
-    """Formulario para crear preguntas simples (independientes)."""
+class PreguntaForm(forms.ModelForm):
+    es_agrupada = forms.BooleanField(
+        required=False,
+        label="¿La pregunta pertenece a un grupo?",
+        help_text="Marque esta opción si desea que la pregunta sea parte de un grupo. El sistema automáticamente asignará la pregunta a un grupo existente o creará uno nuevo si es necesario."
+    )
+    numero_preguntas = forms.IntegerField(
+        required=False,
+        min_value=1,
+        initial=1,
+        label="Número de Preguntas",
+        help_text="Indique cuántas preguntas consecutivas desea crear si esta pregunta es parte de un nuevo grupo."
+    )
 
     class Meta:
         model = Pregunta
-        fields = ['texto',  'tipo_examen', 'modulo']
-
-    def clean(self):
-        cleaned_data = super().clean()
-        # Asegurarse de que no es una pregunta anidada
-        if cleaned_data.get('enunciado'):
-            raise forms.ValidationError("No puedes asignar un enunciado a una pregunta simple.")
-        return cleaned_data
+        fields = ['texto', 'modulo', 'tipo_examen', 'es_agrupada', 'numero_preguntas']
 
 
-class PreguntaConEnunciadoForm(forms.ModelForm):
-    """Formulario para crear un enunciado con tres preguntas relacionadas."""
-
-    pregunta_1 = forms.CharField(label="Pregunta 1", widget=forms.Textarea)
-    pregunta_2 = forms.CharField(label="Pregunta 2", widget=forms.Textarea)
-    pregunta_3 = forms.CharField(label="Pregunta 3", widget=forms.Textarea)
-
-    class Meta:
-        model = Pregunta
-        fields = ['texto', 'activo', 'tipo_examen', 'modulo']
-
-    def clean(self):
-        cleaned_data = super().clean()
-        # Validar que el campo 'enunciado' no esté definido ya que esta es una pregunta principal
-        if cleaned_data.get('enunciado'):
-            raise forms.ValidationError("Esta es una pregunta enunciado, no puede tener un enunciado padre.")
-        return cleaned_data
-
-    def save(self, commit=True):
-        # Crear el enunciado principal
-        enunciado = super().save(commit=False)
-        enunciado.save()
-
-        # Crear las 3 preguntas anidadas relacionadas con este enunciado
-        Pregunta.objects.create(
-            texto=self.cleaned_data['pregunta_1'],
-            activo=enunciado.activo,
-            tipo_examen=enunciado.tipo_examen,
-            modulo=enunciado.modulo,
-            enunciado=enunciado
-        )
-        Pregunta.objects.create(
-            texto=self.cleaned_data['pregunta_2'],
-            activo=enunciado.activo,
-            tipo_examen=enunciado.tipo_examen,
-            modulo=enunciado.modulo,
-            enunciado=enunciado
-        )
-        Pregunta.objects.create(
-            texto=self.cleaned_data['pregunta_3'],
-            activo=enunciado.activo,
-            tipo_examen=enunciado.tipo_examen,
-            modulo=enunciado.modulo,
-            enunciado=enunciado
-        )
-
-        return enunciado
+PreguntaFormSet = modelformset_factory(
+    Pregunta,
+    fields=('texto',),
+    extra=3  # Por defecto permite crear 3 preguntas, puedes ajustar esto si es necesario
+)
 
 # Formulario para subir un archivo Excel
 class SubirPreguntasForm(forms.Form):
-    archivo = forms.FileField(
-        label='Archivo Excel',
-        required=True,
-        widget=forms.ClearableFileInput(attrs={'class': 'form-control'})
-    )
-
-    tipo_examen = forms.ModelChoiceField(
-        queryset=TipoExamen.objects.all(),
-        label="Tipo de Examen",
-        required=True,
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
+    archivo = forms.FileField(label="Archivo Excel con Preguntas")
+    modulo = forms.ModelChoiceField(queryset=Modulo.objects.all(), label="Módulo")
+    tipo_examen = forms.ModelChoiceField(queryset=TipoExamen.objects.all(), label="Tipo de Examen")
 
 # -------------------- FORMULARIO RESPUESTA --------------------
 

@@ -11,7 +11,7 @@ import openpyxl
 import pandas as pd
 from users.models import CustomUser
 from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen, UserExam
-from dashboard_users.forms import ExamenForm, RespuestaFormSet,  TipoExamenForm, ModuloFormSet, SubirPreguntasForm, PreguntaSimpleForm, PreguntaConEnunciadoForm  # Importar ExamenForm desde admin_panel/forms.py
+from dashboard_users.forms import ExamenForm, PreguntaFormSet, RespuestaFormSet,  TipoExamenForm, ModuloFormSet, SubirPreguntasForm, PreguntaForm  # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
@@ -308,79 +308,63 @@ class ListaPreguntas(ListView):
         return Pregunta.objects.prefetch_related('respuestas').order_by('id')
 
 
+
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
-# Crear pregunta simple
-class PreguntaCreateView(CreateView):
-    model = Pregunta
-    form_class = PreguntaSimpleForm
+class CrearPreguntaView(View):
     template_name = 'admin_panel/formulario_preguntas.html'
     success_url = reverse_lazy('admin_panel:lista_preguntas')
 
-    def get_context_data(self, **kwargs):
-        data = super().get_context_data(**kwargs)
-        if self.request.POST:
-            data['respuestas'] = RespuestaFormSet(self.request.POST)
-        else:
-            data['respuestas'] = RespuestaFormSet()
-        return data
+    def get(self, request, *args, **kwargs):
+        form = PreguntaForm()  # Formulario para atributos comunes
+        formset = PreguntaFormSet(queryset=Pregunta.objects.none())  # Formset para múltiples preguntas
+        return render(request, self.template_name, {'form': form, 'formset': formset})
 
-    def form_valid(self, form):
-        # Guardar la pregunta primero para asegurarnos de que tenga un ID
-        self.object = form.save()
+    def post(self, request, *args, **kwargs):
+        form = PreguntaForm(request.POST)
+        formset = PreguntaFormSet(request.POST)
 
-        # Obtenemos el formset de respuestas
-        context = self.get_context_data()
-        respuestas = context['respuestas']
+        if form.is_valid() and formset.is_valid():
+            es_agrupada = request.POST.get('es_agrupada')  # Tomamos si el usuario quiere agrupar
+            modulo = request.POST.get('modulo')
+            tipo_examen = request.POST.get('tipo_examen')
 
-        # Asignar la pregunta guardada a las respuestas
-        respuestas.instance = self.object
+            if es_agrupada:
+                # Crear un nuevo grupo
+                ultimo_grupo = Pregunta.objects.filter(identificador_de_grupo__isnull=False).order_by('-identificador_de_grupo').first()
+                if ultimo_grupo:
+                    identificador_grupo = ultimo_grupo.identificador_de_grupo + 1
+                else:
+                    identificador_grupo = 1  # Si no existen grupos, empezar con 1
 
-        # Verificar si el formset es válido y guardarlo
-        if respuestas.is_valid():
-            respuestas.save()
+                # Crear cada pregunta dentro del nuevo grupo
+                for index, pregunta_form in enumerate(formset):
+                    if pregunta_form.cleaned_data.get('texto'):
+                        Pregunta.objects.create(
+                            texto=pregunta_form.cleaned_data['texto'],
+                            modulo=modulo,
+                            tipo_examen=tipo_examen,
+                            identificador_de_grupo=identificador_grupo,
+                            orden=index + 1,
+                            activo=True
+                        )
+            else:
+                # Crear cada pregunta como individual
+                for pregunta_form in formset:
+                    if pregunta_form.cleaned_data.get('texto'):
+                        Pregunta.objects.create(
+                            texto=pregunta_form.cleaned_data['texto'],
+                            modulo=modulo,
+                            tipo_examen=tipo_examen,
+                            identificador_de_grupo=None,
+                            orden=1,
+                            activo=True
+                        )
+
+            messages.success(request, "Las preguntas han sido creadas con éxito.")
             return redirect(self.success_url)
-        else:
-            # Si el formset no es válido, renderizar nuevamente el formulario con errores
-            return self.render_to_response(self.get_context_data(form=form, respuestas=respuestas))
 
-
-@method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
-# Crear pregunta con enunciado
-class PreguntaConEnunciadoCreateView(CreateView):
-    model = Pregunta
-    form_class = PreguntaConEnunciadoForm
-    template_name = 'admin_panel/formulario_pregunta_enunciado'
-    success_url = reverse_lazy('admin_panel:lista_preguntas')
-
-@method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
-# Editar pregunta
-class PreguntaUpdateView(UpdateView):
-    model = Pregunta
-    form_class = PreguntaSimpleForm
-    template_name = 'admin_panel/formulario_preguntas.html'
-    success_url = reverse_lazy('admin_panel:lista_preguntas')
-
-    def get_context_data(self, **kwargs):
-        data = super().get_context_data(**kwargs)
-        if self.request.POST:
-            data['respuestas'] = RespuestaFormSet(self.request.POST, instance=self.object)
-        else:
-            data['respuestas'] = RespuestaFormSet(instance=self.object)
-        return data
-
-    def form_valid(self, form):
-        context = self.get_context_data()
-        respuestas = context['respuestas']
-
-        # Guardamos primero la pregunta
-        self.object = form.save()
-
-        # Luego asignamos la pregunta guardada al formset de respuestas y lo guardamos
-        if respuestas.is_valid():
-            respuestas.instance = self.object
-            respuestas.save()
-
-        return super().form_valid(form)
+        messages.error(request, "Hubo un error al crear las preguntas. Por favor, revisa los campos e inténtalo de nuevo.")
+        return render(request, self.template_name, {'form': form, 'formset': formset})
 
 # Eliminar pregunta
 class PreguntaDeleteView(DeleteView):
@@ -396,62 +380,80 @@ class SubirPreguntasView(FormView):
 
     def form_valid(self, form):
         archivo_excel = form.cleaned_data['archivo']
+        modulo = form.cleaned_data['modulo']
         tipo_examen = form.cleaned_data['tipo_examen']
 
-        wb = openpyxl.load_workbook(archivo_excel)
-        sheet = wb.active
+        try:
+            wb = openpyxl.load_workbook(archivo_excel)
+            sheet = wb.active
 
-        modulos_no_existentes = []
-        for row in sheet.iter_rows(min_row=2, values_only=True):
-            _, _, _, _, _, _, modulo_nombre = row
-            
-            if not Modulo.objects.filter(nombre=modulo_nombre).exists():
-                modulos_no_existentes.append(modulo_nombre)
-        
-        if modulos_no_existentes:
-            mensajes_error = f"Los siguientes módulos no existen: {', '.join(modulos_no_existentes)}. No se ha subido el archivo."
-            messages.error(self.request, mensajes_error)
-            return self.form_invalid(form)
+            for row_number, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                # Verificar si la fila está completamente vacía
+                if all(cell is None for cell in row):
+                    continue  # Ignorar filas completamente vacías
 
-        enunciado_actual = None
+                # Obtener los valores de las columnas
+                pregunta_texto = row[0]
+                respuesta_correcta = row[1]
+                respuesta_1 = row[2]
+                respuesta_2 = row[3]
+                respuesta_3 = row[4]
+                identificador_grupo = row[5]
 
-        for row in sheet.iter_rows(min_row=2, values_only=True):
-            texto_enunciado, texto_pregunta, respuesta_correcta, respuesta_1, respuesta_2, respuesta_3, modulo_nombre = row
+                # Validar que la pregunta no esté vacía (eliminando espacios en blanco primero)
+                if not pregunta_texto or not str(pregunta_texto).strip():
+                    mensajes_error = f"La fila {row_number} del archivo no tiene un texto de pregunta válido. Por favor, corrija el archivo e inténtelo de nuevo."
+                    messages.error(self.request, mensajes_error)
+                    return self.form_invalid(form)
 
-            modulo = Modulo.objects.get(nombre=modulo_nombre)
+                pregunta_texto = str(pregunta_texto).strip()
 
-            if texto_enunciado:
-                enunciado_actual = Pregunta.objects.create(
-                    texto=texto_enunciado,
+                # Determinar si la pregunta es parte de un grupo o es individual
+                identificador_grupo = int(identificador_grupo) if identificador_grupo else None
+                orden = 1
+                if identificador_grupo:
+                    # Si hay un identificador de grupo, calcular el siguiente orden disponible
+                    preguntas_existentes = Pregunta.objects.filter(identificador_de_grupo=identificador_grupo)
+                    orden = preguntas_existentes.count() + 1
+
+                # Crear la pregunta
+                pregunta_actual = Pregunta.objects.create(
+                    texto=pregunta_texto,
                     modulo=modulo,
                     tipo_examen=tipo_examen,
+                    identificador_de_grupo=identificador_grupo,
+                    orden=orden,
                     activo=True
                 )
 
-            pregunta_actual = Pregunta.objects.create(
-                texto=texto_pregunta,
-                modulo=modulo,
-                tipo_examen=tipo_examen,
-                enunciado=enunciado_actual if texto_enunciado else None,
-                activo=True
-            )
+                # Crear las respuestas asociadas a la pregunta
+                respuestas = [
+                    {'texto': str(respuesta_1).strip() if respuesta_1 else None, 'es_correcta': respuesta_1 == respuesta_correcta},
+                    {'texto': str(respuesta_2).strip() if respuesta_2 else None, 'es_correcta': respuesta_2 == respuesta_correcta},
+                    {'texto': str(respuesta_3).strip() if respuesta_3 else None, 'es_correcta': respuesta_3 == respuesta_correcta},
+                ]
 
-            # Procesar las respuestas y marcar la correcta
-            respuestas = [
-                {'texto': respuesta_1, 'es_correcta': respuesta_1 == respuesta_correcta},
-                {'texto': respuesta_2, 'es_correcta': respuesta_2 == respuesta_correcta},
-                {'texto': respuesta_3, 'es_correcta': respuesta_3 == respuesta_correcta},
-            ]
+                for respuesta in respuestas:
+                    if respuesta['texto']:  # Solo crear respuestas no vacías
+                        Respuesta.objects.create(
+                            pregunta=pregunta_actual,
+                            texto=respuesta['texto'],
+                            es_correcta=respuesta['es_correcta']
+                        )
 
-            for respuesta in respuestas:
-                Respuesta.objects.create(
-                    pregunta=pregunta_actual,
-                    texto=respuesta['texto'],
-                    es_correcta=respuesta['es_correcta']
-                )
+            messages.success(self.request, "Las preguntas se han subido correctamente.")
+            return super().form_valid(form)
 
-        return super().form_valid(form)
+        except Exception as e:
+            messages.error(self.request, f"Hubo un error al procesar el archivo: {str(e)}")
+            return self.form_invalid(form)
 
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error al subir las preguntas. Por favor, revisa el archivo e inténtalo nuevamente.")
+        return self.render_to_response(self.get_context_data(form=form))
+
+
+# Actualizar preguntas
 class ActualizarPreguntasView(View):
     def get(self, request, *args, **kwargs):
         # Ejecutar la función de sincronización manual

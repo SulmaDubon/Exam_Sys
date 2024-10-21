@@ -5,7 +5,7 @@ from .views import (
     ListaUsuarios, CrearUsuario, EditarUsuario, EliminarUsuario,
     ListaExamenes, CrearExamen, EditarExamen, EliminarExamen,
     UsuariosInscritosView,
-    ListaPreguntas, PreguntaCreateView, PreguntaConEnunciadoCreateView, PreguntaUpdateView, PreguntaDeleteView,
+    ListaPreguntas, CrearPreguntaView, PreguntaDeleteView,
     AccionesExamenesView,
     TipoExamenListView, CrearTipoExamenView, EditarTipoExamenView, TipoExamenDeleteView,
     get_modulos,
@@ -32,9 +32,7 @@ urlpatterns = [
 
     # Preguntas
     path('preguntas/', ListaPreguntas.as_view(), name='lista_preguntas'),
-    path('preguntas/crear/', PreguntaCreateView.as_view(), name='pregunta_create'),
-    path('preguntas/crear-enunciado/', PreguntaConEnunciadoCreateView.as_view(), name='pregunta_create_enunciado'),
-    path('preguntas/editar/<int:pk>/', PreguntaUpdateView.as_view(), name='pregunta_update'),
+    path('preguntas/crear/', CrearPreguntaView.as_view(), name='pregunta_create'),
     path('preguntas/eliminar/<int:pk>/', PreguntaDeleteView.as_view(), name='pregunta_delete'),
     path('preguntas/subir/', SubirPreguntasView.as_view(), name='subir_preguntas'),
     path('preguntas/actualizar/', ActualizarPreguntasView.as_view(), name='actualizar_preguntas'),

@@ -32,35 +32,18 @@ class Modulo(models.Model):
 #------------------- PREGUNTA ----------------------------------------
 
 class Pregunta(models.Model):
-    texto = models.TextField()  # El texto de la pregunta o enunciado
+    texto = models.TextField()  # El texto de la pregunta
     activo = models.BooleanField(default=True)
     tipo_examen = models.ForeignKey(TipoExamen, on_delete=models.CASCADE, related_name='preguntas')  # Asociación directa al tipo de examen
     modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='preguntas', null=False)  # Asociar a módulo
-    enunciado = models.ForeignKey(
-        'self',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='preguntas_relacionadas'
-    )  # Relación para preguntas anidadas
-
-    def es_enunciado(self):
-        """Determina si la pregunta es un enunciado (sin estar relacionada a otro enunciado)."""
-        return self.enunciado is None
-
-    def save(self, *args, **kwargs):
-        if self.enunciado:
-            # Verificar que no existan más de 3 preguntas anidadas para un enunciado
-            if self.enunciado.preguntas_relacionadas.count() >= 3:
-                raise ValueError("Cada enunciado puede tener un máximo de 3 preguntas anidadas.")
-        super().save(*args, **kwargs)
+    identificador_de_grupo = models.PositiveIntegerField(null=True, blank=True)  # Identificador para agrupar preguntas relacionadas
+    orden = models.PositiveIntegerField(default=1)  # Para definir el orden dentro del grupo, si corresponde
 
     def __str__(self):
-        if self.es_enunciado():
-            return f"Enunciado: {self.texto} (Módulo: {self.modulo.nombre}, Tipo de Examen: {self.tipo_examen.nombre})"
+        if self.identificador_de_grupo:
+            return f"Pregunta (Grupo: {self.identificador_de_grupo}, Orden: {self.orden}): {self.texto}"
         else:
             return f"Pregunta: {self.texto} (Módulo: {self.modulo.nombre}, Tipo de Examen: {self.tipo_examen.nombre})"
-
 #----------------------- RESPUESTAS ----------------------------
 
 class Respuesta(models.Model):

@@ -88,48 +88,61 @@ def sala_espera_examen(request, examen_id):
 #----------------------------------------
 #   EXAMEN
 #-----------------------------------------
-
-class GenerarExamenView(TemplateView):
+class GenerarExamenView(View):
     template_name = 'dashboard_users/examen.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        examen_id = self.kwargs.get('examen_id')
-        examen = get_object_or_404(Examen, id=examen_id)
-        usuario = self.request.user
+    def get(self, request, examen_id, page=1):
+        user_exam = get_object_or_404(UserExam, examen_id=examen_id, usuario=request.user)
 
-        # Verifica si ya tiene un examen generado
-        user_exam, created = UserExam.objects.get_or_create(
-            usuario=usuario,
-            examen=examen,
-            defaults={'inicio': timezone.now()}
-        )
+        # Verificar si el examen ya fue finalizado
+        if user_exam.finalizado:
+            messages.info(request, 'Este examen ya ha sido completado.')
+            return redirect('dashboard_users:resultados')
 
-        # Selección de 260 preguntas al azar
-        if created:
-            preguntas = Pregunta.objects.order_by('?')[:260]
-            user_exam.preguntas.set(preguntas)
-        else:
-            # Actualiza el tiempo restante
-            tiempo_maximo = 3 * 60 * 60  # 3 horas en segundos
-            tiempo_transcurrido = (timezone.now() - user_exam.inicio).total_seconds()
-            if tiempo_transcurrido >= tiempo_maximo:
-                # Marca el examen como finalizado si el tiempo se agotó
-                user_exam.examen_finalizado()
-                return redirect('dashboard_users:dashboard')  # Redirige al dashboard
+        # Obtener las preguntas del examen del usuario y paginarlas
+        preguntas = user_exam.preguntas.all()
+        paginator = Paginator(preguntas, 20)  # Mostrar 20 preguntas por página
+        pagina_actual = paginator.get_page(page)
 
-        # Paginación
-        page_number = self.request.GET.get('page', 1)  # Página actual
-        paginator = Paginator(user_exam.preguntas.all(), 20)  # 20 preguntas por página
-        page_obj = paginator.get_page(page_number)
+        context = {
+            'user_exam': user_exam,
+            'pagina_actual': pagina_actual,
+            'nombre_examen': user_exam.examen.nombre,
+            'nombre_usuario': f"{request.user.first_name} {request.user.last_name}",
+            'cedula': request.user.cedula,
+            'correo': request.user.email,
+        }
 
-        context['examen'] = examen
-        context['usuario'] = usuario
-        context['preguntas'] = page_obj
-        context['paginator'] = paginator
-        context['page_obj'] = page_obj
-        context['tiempo_restante'] = int(max(0, 3 * 60 * 60 - (timezone.now() - user_exam.inicio).total_seconds()))
-        return context
+        return render(request, self.template_name, context)
+
+    def post(self, request, examen_id, page=1):
+        user_exam = get_object_or_404(UserExam, examen_id=examen_id, usuario=request.user)
+
+        # Verificar si el examen ya fue finalizado
+        if user_exam.finalizado:
+            messages.error(request, 'Este examen ya ha sido completado.')
+            return redirect('dashboard_users:resultados')
+
+        # Guardar las respuestas enviadas para las preguntas de la página actual
+        pagina_actual = Paginator(user_exam.preguntas.all(), 20).get_page(page)
+        for pregunta in pagina_actual:
+            respuesta_usuario = request.POST.get(f'respuesta_{pregunta.id}', None)
+            if respuesta_usuario:
+                user_exam.respuestas[str(pregunta.id)] = respuesta_usuario
+
+        user_exam.save()
+
+        # Verificar si el usuario presionó el botón de finalizar
+        if 'finalizar' in request.POST:
+            user_exam.examen_finalizado()
+            user_exam.calcular_nota()
+            messages.success(request, 'Has completado el examen.')
+            return redirect('dashboard_users:resultados')
+
+        # Redirigir a la siguiente página del examen
+        next_page = page + 1
+        return redirect('dashboard_users:generar_examen', examen_id=user_exam.id, page=next_page)
+
 
 
 

@@ -147,7 +147,7 @@
                 <li>
                     {{ inscripcion.examen.nombre }} - {{ inscripcion.examen.fecha }} - {{ inscripcion.examen.hora }}
                     {% if not inscripcion.resultado %}
-                    <a href="{% url 'dashboard_users:sala_espera_examen' inscripcion.examen.id %}">Realizar Examen</a>
+                    <a href="{% url 'dashboard_users:generar_examen' inscripcion.examen.id %}">Realizar Examen</a>
                     {% else %}
                         <span>Examen completado</span>
                     {% endif %}

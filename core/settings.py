@@ -123,8 +123,13 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 
+# Archivos estáticos
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # Esta es la ruta donde collectstatic guardará los archivos
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Aquí se recolectan todos los archivos estáticos después de ejecutar collectstatic
+STATICFILES_DIRS = [
+    BASE_DIR / 'dashboard_users' / 'static',  # Aquí Django buscará archivos estáticos adicionales en la app 'dashboard_users'
+]
+
 
 
 # Default primary key field type

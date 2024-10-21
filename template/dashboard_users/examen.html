@@ -146,7 +146,8 @@
 
                 {% if pagina_actual.has_next %}
                     <button type="submit" formaction="{% url 'dashboard_users:generar_examen' user_exam.examen.id pagina_actual.next_page_number %}">Siguiente</button>
-                {% else %}
+                {% endif %}
+                {% if not pagina_actual.has_next and not pagina_actual.has_previous %}
                     <button type="submit" name="finalizar">Finalizar Examen</button>
                 {% endif %}
             </div>

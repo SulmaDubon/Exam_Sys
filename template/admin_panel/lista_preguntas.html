@@ -38,6 +38,23 @@
         .button:hover {
             background-color: #0056b3;
         }
+        .message {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -98,8 +115,24 @@
 <body>
     <div class="container">
         <h1>Lista de Preguntas</h1>
-        <a href="{% url 'admin_panel:pregunta_create' %}" class="btn btn-primary">Añadir Pregunta</a>
-        <a href="{% url 'admin_panel:subir_preguntas' %}" class="button">Subir Preguntas</a>
+
+        <!-- Mostrar los mensajes de Django -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Botones de acciones -->
+        <div class="action-buttons">
+            <a href="{% url 'admin_panel:pregunta_create' %}" class="button">Añadir Pregunta</a>
+            <a href="{% url 'admin_panel:subir_preguntas' %}" class="button">Subir Preguntas</a>
+            <form method="get" action="{% url 'admin_panel:actualizar_preguntas' %}" style="display:inline;">
+                <button type="submit" class="button">Actualizar Preguntas</button>
+            </form>
+        </div>
+
+        <!-- Tabla de preguntas -->
         <table>
             <thead>
                 <tr>

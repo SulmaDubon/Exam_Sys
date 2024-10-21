@@ -9,7 +9,7 @@ from .views import (
     AccionesExamenesView,
     TipoExamenListView, CrearTipoExamenView, EditarTipoExamenView, TipoExamenDeleteView,
     get_modulos,
-    SubirPreguntasView
+    SubirPreguntasView, ActualizarPreguntasView
 )
 
 app_name = 'admin_panel'
@@ -37,7 +37,8 @@ urlpatterns = [
     path('preguntas/editar/<int:pk>/', PreguntaUpdateView.as_view(), name='pregunta_update'),
     path('preguntas/eliminar/<int:pk>/', PreguntaDeleteView.as_view(), name='pregunta_delete'),
     path('preguntas/subir/', SubirPreguntasView.as_view(), name='subir_preguntas'),
-    
+    path('preguntas/actualizar/', ActualizarPreguntasView.as_view(), name='actualizar_preguntas'),
+
     # Tipo de Examenes
     path('tipo_examen/', TipoExamenListView.as_view(), name='lista_tipo_examen'),  # Corrigido nombre de la ruta
     path('tipo_examen/crear/', CrearTipoExamenView.as_view(), name='crear_tipo_examen'),

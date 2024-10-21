@@ -1,90 +1,156 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        h1, h2 {
+            color: #007bff;
+            text-align: center;
+        }
+        .question {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f7f7f7;
+        }
+        .answers {
+            margin-top: 10px;
+        }
+        .answer {
+            margin-bottom: 10px;
+        }
+        .pagination {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .pagination button {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .pagination button:hover {
+            background-color: #0056b3;
+        }
+        #temporizador {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            color: #ff0000;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var tiempoRestante = JSON.parse("{{ user_exam.tiempo_restante|escapejs }}");
 
-{% block title %}Realizar Examen{% endblock %}
+            function iniciarTemporizador(duracion) {
+                var display = document.getElementById('temporizador');
+                var timer = duracion, hours, minutes, seconds;
 
-{% block head %}
-<style>
-    .examen-container {
-        padding: 20px;
-        max-width: 800px;
-        margin: auto;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    h1, h2 {
-        color: #333;
-        text-align: center;
-    }
-    .pregunta {
-        margin-bottom: 20px;
-        padding: 15px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-    }
-    .respuesta {
-        margin: 10px 0;
-    }
-    .botones-navegacion {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 30px;
-    }
-    .boton-siguiente, .boton-finalizar {
-        padding: 10px 20px;
-        background-color: #007bff;
-        color: #fff;
-        border: none;
-        border-radius: 5px;
-        text-decoration: none;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-    .boton-finalizar {
-        background-color: #28a745;
-    }
-    .boton-siguiente:hover {
-        background-color: #0056b3;
-    }
-    .boton-finalizar:hover {
-        background-color: #218838;
-    }
-</style>
-{% endblock %}
+                var interval = setInterval(function () {
+                    hours = Math.floor(timer / 3600);
+                    minutes = Math.floor((timer % 3600) / 60);
+                    seconds = timer % 60;
 
-{% block content %}
-<div class="examen-container">
-    <h1>{{ nombre_examen }}</h1>
-    <h2>Usuario: {{ nombre_usuario }}</h2>
-    <p><strong>Cédula:</strong> {{ cedula }}</p>
-    <p><strong>Correo Electrónico:</strong> {{ correo }}</p>
+                    display.textContent = hours.toString().padStart(2, '0') + ":" + 
+                                          minutes.toString().padStart(2, '0') + ":" + 
+                                          seconds.toString().padStart(2, '0');
 
-    <form method="post">
-        {% csrf_token %}
-        {% for pregunta in pagina_actual %}
-            <div class="pregunta">
-                <p><strong>{{ forloop.counter }}. {{ pregunta.texto }}</strong></p>
-                {% for respuesta in pregunta.respuestas.all %}
-                    <div class="respuesta">
-                        <input type="radio" name="respuesta_{{ pregunta.id }}" value="{{ respuesta.texto }}" id="respuesta_{{ respuesta.id }}">
-                        <label for="respuesta_{{ respuesta.id }}">{{ respuesta.texto }}</label>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endfor %}
+                    if (--timer < 0) {
+                        clearInterval(interval);
+                        // Cuando el temporizador termine, envía el formulario automáticamente
+                        document.getElementById('formularioExamen').submit();
+                    }
+                }, 1000);
+            }
 
-        <div class="botones-navegacion">
-            {% if pagina_actual.has_previous %}
-                <a href="{% url 'dashboard_users:generar_examen' user_exam.id pagina_actual.previous_page_number %}" class="boton-siguiente">Anterior</a>
-            {% endif %}
-            {% if pagina_actual.has_next %}
-                <button type="submit" class="boton-siguiente">Siguiente</button>
-            {% else %}
-                <button type="submit" name="finalizar" class="boton-finalizar">Finalizar Examen</button>
-            {% endif %}
+            iniciarTemporizador(tiempoRestante);
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Examen: {{ examen.nombre }}</h1>
+        <h2>Usuario: {{ usuario.first_name }} {{ usuario.last_name }}</h2>
+        <p>Cédula: {{ usuario.cedula }}</p>
+        <p>Correo electrónico: {{ usuario.email }}</p>
+        
+        <div id="temporizador">Tiempo restante: --:--:--</div>
+
+        <div class="module-info">
+            <h3>Módulo: {{ modulo_actual.nombre }}</h3>
         </div>
-    </form>
-</div>
-{% endblock %}
 
+        <form id="formularioExamen" method="post" action="{% url 'dashboard_users:generar_examen' user_exam.examen.id pagina_actual.number %}">
+            {% csrf_token %}
+            {% for pregunta in pagina_actual %}
+                <div class="question">
+                    <p><strong>{{ forloop.counter }}. {{ pregunta.texto }}</strong></p>
+                    {% if pregunta.preguntas_relacionadas.exists %}
+                        <div class="sub-questions">
+                            {% for sub_pregunta in pregunta.preguntas_relacionadas.all %}
+                                <div class="sub-question">
+                                    <p><strong>{{ forloop.counter }}. {{ sub_pregunta.texto }}</strong></p>
+                                    <div class="answers">
+                                        {% for respuesta in sub_pregunta.respuestas.all %}
+                                            <div class="answer">
+                                                <input type="radio" name="pregunta_{{ sub_pregunta.id }}" id="respuesta_{{ respuesta.id }}" value="{{ respuesta.id }}">
+                                                <label for="respuesta_{{ respuesta.id }}">{{ respuesta.letra }}. {{ respuesta.texto }}</label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="answers">
+                        {% for respuesta in pregunta.respuestas.all %}
+                            <div class="answer">
+                                <input type="radio" name="pregunta_{{ pregunta.id }}" id="respuesta_{{ respuesta.id }}" value="{{ respuesta.id }}">
+                                <label for="respuesta_{{ respuesta.id }}">{{ respuesta.letra }}. {{ respuesta.texto }}</label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+
+            <div class="pagination">
+                {% if pagina_actual.has_previous %}
+                    <button type="submit" formaction="{% url 'dashboard_users:generar_examen' user_exam.examen.id pagina_actual.previous_page_number %}">Anterior</button>
+                {% endif %}
+
+                {% if pagina_actual.has_next %}
+                    <button type="submit" formaction="{% url 'dashboard_users:generar_examen' user_exam.examen.id pagina_actual.next_page_number %}">Siguiente</button>
+                {% else %}
+                    <button type="submit" name="finalizar">Finalizar Examen</button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</body>
+</html>

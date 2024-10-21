@@ -9,14 +9,13 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 import openpyxl
 import pandas as pd
-from dashboard_users.tasks import generar_examen_para_usuarios
 from users.models import CustomUser
-from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen
+from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen, UserExam
 from dashboard_users.forms import ExamenForm, RespuestaFormSet,  TipoExamenForm, ModuloFormSet, SubirPreguntasForm, PreguntaSimpleForm, PreguntaConEnunciadoForm  # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
 from django.contrib import messages 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.urls import reverse
@@ -171,12 +170,6 @@ class CrearExamen(CreateView):
         response = super().form_valid(form)
         examen = self.object
 
-         # Programar la tarea para generar los UserExam 5 minutos antes de la hora de inicio del examen
-        generar_examen_para_usuarios(examen.id, schedule=examen.fecha - timedelta(minutes=5))
-
-        messages.success(self.request, f'El examen "{examen.nombre}" se ha creado y los exámenes para los usuarios serán generados 5 minutos antes de la hora de inicio.')
-        return response
-
         # Seleccionar preguntas al azar respetando los módulos
         preguntas_seleccionadas = []
         for modulo in examen.tipo_examen.modulos.all():
@@ -237,9 +230,6 @@ class CrearExamen(CreateView):
     def form_invalid(self, form):
         messages.error(self.request, 'Hubo un error al crear el examen. Por favor, revisa los datos ingresados.')
         return super().form_invalid(form)
-
-
-
 
 
 # Vista para editar un examen existente
@@ -392,14 +382,11 @@ class PreguntaUpdateView(UpdateView):
 
         return super().form_valid(form)
 
-
-
 # Eliminar pregunta
 class PreguntaDeleteView(DeleteView):
     model = Pregunta
     template_name = 'admin_panel/confirmar_eliminacion_pregunta.html'
     success_url = reverse_lazy('admin_panel:lista_preguntas')
-
 
 # subir pregunta
 class SubirPreguntasView(FormView):
@@ -464,6 +451,27 @@ class SubirPreguntasView(FormView):
                 )
 
         return super().form_valid(form)
+
+class ActualizarPreguntasView(View):
+    def get(self, request, *args, **kwargs):
+        # Ejecutar la función de sincronización manual
+        hoy = date.today()
+        for examen in Examen.objects.all():
+            if examen.fecha < hoy:
+                continue
+
+            # Verificar si realmente hay preguntas para sincronizar
+            for user_exam in UserExam.objects.filter(examen=examen, finalizado=False):
+                if user_exam.preguntas.exists():
+                    user_exam.preguntas.set(examen.preguntas.all())
+                    user_exam.save()
+
+        # Mensaje de éxito para el usuario solo una vez
+        messages.success(request, 'Las preguntas han sido actualizadas correctamente.')
+
+        # Redirigir a la lista de preguntas
+        return redirect(reverse('admin_panel:lista_preguntas'))
+
 #------------------------------------------------
 #   ACCIONES
 #------------------------------------------------

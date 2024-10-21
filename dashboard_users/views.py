@@ -107,10 +107,8 @@ class GenerarExamenView(View):
         context = {
             'user_exam': user_exam,
             'pagina_actual': pagina_actual,
-            'nombre_examen': user_exam.examen.nombre,
-            'nombre_usuario': f"{request.user.first_name} {request.user.last_name}",
-            'cedula': request.user.cedula,
-            'correo': request.user.email,
+            'examen': user_exam.examen,
+            'usuario': request.user,
         }
 
         return render(request, self.template_name, context)
@@ -126,7 +124,7 @@ class GenerarExamenView(View):
         # Guardar las respuestas enviadas para las preguntas de la página actual
         pagina_actual = Paginator(user_exam.preguntas.all(), 20).get_page(page)
         for pregunta in pagina_actual:
-            respuesta_usuario = request.POST.get(f'respuesta_{pregunta.id}', None)
+            respuesta_usuario = request.POST.get(f'pregunta_{pregunta.id}', None)
             if respuesta_usuario:
                 user_exam.respuestas[str(pregunta.id)] = respuesta_usuario
 
@@ -141,34 +139,18 @@ class GenerarExamenView(View):
 
         # Redirigir a la siguiente página del examen
         next_page = page + 1
-        return redirect('dashboard_users:generar_examen', examen_id=user_exam.id, page=next_page)
+        if page < Paginator(user_exam.preguntas.all(), 20).num_pages:
+            return redirect('dashboard_users:generar_examen', examen_id=user_exam.examen.id, page=next_page)
+
+        # Si es la última página, finalizar el examen
+        user_exam.finalizado = True
+        user_exam.fecha_envio = timezone.now()
+        user_exam.save()
+        messages.success(request, 'Examen finalizado correctamente.')
+        return redirect('dashboard_users:resultados')
 
 
 
-
-class SubmitExamenView(LoginRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        examen_id = self.kwargs.get('examen_id')
-        examen = get_object_or_404(Examen, id=examen_id)
-        inscripcion = get_object_or_404(InscripcionExamen, examen=examen, usuario=request.user)
-
-        puntaje = 0
-        total_preguntas = 0
-        for key, value in request.POST.items():
-            if key.startswith('pregunta_'):
-                pregunta_id = int(key.split('_')[1])
-                respuesta_seleccionada = value
-                pregunta = Pregunta.objects.get(id=pregunta_id)
-                if respuesta_seleccionada == pregunta.respuesta_correcta:
-                    puntaje += 1
-                total_preguntas += 1
-        
-        resultado = f"Puntaje: {puntaje}/{total_preguntas}"
-        inscripcion.resultado = resultado
-        inscripcion.save()
-
-        messages.success(request, "El examen se ha enviado exitosamente.")
-        return redirect('dashboard_users:dashboard')
 
 #---------------------------------
 # INSCRIPCION
@@ -191,6 +173,12 @@ class InscripcionExamenView(LoginRequiredMixin, TemplateView):
             inscripcion, created = InscripcionExamen.objects.get_or_create(usuario=request.user, examen=examen)
 
             if created:
+                # Crear una instancia de UserExam después de inscribirse
+                preguntas_examen = examen.preguntas.all()
+                user_exam = UserExam.objects.create(usuario=request.user, examen=examen)
+                user_exam.preguntas.set(preguntas_examen)
+                user_exam.save()
+
                 messages.success(request, 'Te has inscrito exitosamente al examen.')
             else:
                 messages.info(request, 'Ya estás inscrito en este examen.')

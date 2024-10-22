@@ -11,14 +11,9 @@ environ.Env.read_env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['*']
-
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-
+ALLOWED_HOSTS = ['www.cmcmfcert.mx', 'cmcmfcert' ]
 
 # Application definition
 
@@ -46,9 +41,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    #'whitenoise.middleware.WhiteNoiseMiddleware',  # Agregar whitenoise al principio
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Habilitado para archivos estáticos
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -56,6 +51,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 
 ROOT_URLCONF = 'core.urls'
 
@@ -81,18 +80,17 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DB_NAME', 'nombre_por_defecto'),
+        'USER': os.environ.get('DB_USER', 'usuario_por_defecto'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'contraseña_por_defecto'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
+    }
+}
 
-if 'RENDER' in os.environ:
-    DATABASES = {
-        'default': dj_database_url.config(default=f'sqlite:///{BASE_DIR}/db.sqlite3')
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
 
 
 # Password validation
@@ -144,14 +142,7 @@ if not DEBUG:
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
     
-
-    
-
-
-
-
-
-
+ 
 # Configuración de mensajes
 
 MESSAGE_TAGS = {
@@ -167,9 +158,5 @@ LOGIN_URL = 'users:login'
 LOGIN_REDIRECT_URL = 'dashboard_users:dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
-# settings.py
-INTERNAL_IPS = [
-    # IPs locales por defecto
-    '127.0.0.1',
-    'localhost',
-]
+
+

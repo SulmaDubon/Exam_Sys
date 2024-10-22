@@ -144,24 +144,31 @@ class UserExam(models.Model):
             self.save()
 
     def calcular_nota(self):
-        """Calcula y asigna la nota del examen basado en las respuestas correctas de forma más eficiente."""
+        """Calcula y asigna la nota del examen basado en las respuestas correctas."""
         total_preguntas = self.preguntas.count()
         if total_preguntas > 0:
             preguntas = self.preguntas.prefetch_related('respuestas')
             respuestas_correctas = 0
 
-            # Comprobar respuestas correctas de manera más eficiente
             for pregunta in preguntas:
                 respuesta_usuario = self.respuestas.get(str(pregunta.id), None)
-                if respuesta_usuario and pregunta.respuestas.filter(es_correcta=True, texto=respuesta_usuario).exists():
+                if respuesta_usuario and pregunta.respuestas.filter(es_correcta=True, id=respuesta_usuario).exists():
                     respuestas_correctas += 1
 
-            # Calcular la nota en porcentaje
+            # Calcular la nota como el porcentaje de respuestas correctas sobre el total de preguntas
             self.nota = (respuestas_correctas / total_preguntas) * 100
         else:
             self.nota = 0
+
         self.save()
         self.actualizar_estado()
 
 
-
+def actualizar_estado(self):
+    """Actualiza el estado basado en la nota."""
+    if self.nota is not None:
+        if self.nota >= 60:  # Por ejemplo, puedes definir que 60 es la nota mínima para aprobar
+            self.estado = 'Aprobado'
+        else:
+            self.estado = 'Reprobado'
+    self.save()  # Guarda los cambios en el modelo

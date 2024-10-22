@@ -10,7 +10,7 @@ from django.utils.decorators import method_decorator
 import openpyxl
 import pandas as pd
 from users.models import CustomUser
-from dashboard_users.models import Examen, Modulo, Pregunta, Respuesta, TipoExamen, UserExam
+from dashboard_users.models import Examen, InscripcionExamen, Modulo, Pregunta, Respuesta, TipoExamen, UserExam
 from dashboard_users.forms import ExamenForm, PreguntaFormSet, RespuestaFormSet,  TipoExamenForm, ModuloFormSet, SubirPreguntasForm, PreguntaForm  # Importar ExamenForm desde admin_panel/forms.py
 from users.forms import UserRegistrationForm  # Importar UserRegistrationForm desde users/forms.py
 from django.contrib.auth.views import LoginView
@@ -21,7 +21,15 @@ from django.db.models import Q
 from django.urls import reverse
 from django.db.models import Max
 from django.views.generic.edit import FormView
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
+from django.db import transaction 
+from django.db.models import Prefetch 
+from openpyxl.styles import PatternFill 
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.units import inch
 
 
 # from .decorators import es_admin
@@ -166,51 +174,52 @@ class CrearExamen(CreateView):
     success_url = reverse_lazy('admin_panel:lista_examenes')
 
     def form_valid(self, form):
-        # Guardar el examen primero
         response = super().form_valid(form)
         examen = self.object
 
-        # Seleccionar preguntas al azar respetando los módulos
-        preguntas_ids_seleccionadas = set()  # Conjunto para almacenar los IDs de las preguntas seleccionadas
+        try:
+            with transaction.atomic():  # Inicia una transacción
+                preguntas_ids_seleccionadas = set()
 
-        for modulo in examen.tipo_examen.modulos.all():
-            # Obtener todas las preguntas del módulo y barajarlas
-            todas_las_preguntas = list(Pregunta.objects.filter(modulo=modulo).values_list('id', 'identificador_de_grupo', 'orden'))
-            random.shuffle(todas_las_preguntas)
+                for modulo in examen.tipo_examen.modulos.all():
+                    todas_las_preguntas = list(Pregunta.objects.filter(modulo=modulo).values_list('id', 'identificador_de_grupo', 'orden'))
+                    random.shuffle(todas_las_preguntas)
 
-            # Cantidad de preguntas requeridas por el módulo
-            total_preguntas_requeridas = modulo.cantidad_preguntas
-            total_preguntas_disponibles = len(todas_las_preguntas)
+                    total_preguntas_requeridas = modulo.cantidad_preguntas
+                    total_preguntas_disponibles = len(todas_las_preguntas)
 
-            # Ajustar la cantidad de preguntas requeridas si no hay suficientes preguntas disponibles
-            if total_preguntas_disponibles < total_preguntas_requeridas:
-                total_preguntas_requeridas = total_preguntas_disponibles
+                    # Si no hay suficientes preguntas, ajusta al total disponible
+                    if total_preguntas_disponibles < total_preguntas_requeridas:
+                        total_preguntas_requeridas = total_preguntas_disponibles
 
-            # Iterar sobre las preguntas barajadas hasta alcanzar la cantidad requerida
-            preguntas_seleccionadas_modulo = 0
-            for pregunta_id, identificador_grupo, _ in todas_las_preguntas:
-                if preguntas_seleccionadas_modulo >= total_preguntas_requeridas:
-                    break
+                    preguntas_seleccionadas_modulo = 0
+                    for pregunta_id, identificador_grupo, _ in todas_las_preguntas:
+                        if preguntas_seleccionadas_modulo >= total_preguntas_requeridas:
+                            break
 
-                # Añadir las preguntas del grupo completo, si aplica
-                if identificador_grupo:
-                    preguntas_del_grupo = list(Pregunta.objects.filter(identificador_de_grupo=identificador_grupo).order_by('orden').values_list('id', flat=True))
-                    # Verificar si el grupo completo cabe dentro del límite de preguntas requeridas
-                    if len(preguntas_ids_seleccionadas) + len(preguntas_del_grupo) <= total_preguntas_requeridas:
-                        preguntas_ids_seleccionadas.update(preguntas_del_grupo)
-                        preguntas_seleccionadas_modulo += len(preguntas_del_grupo)
+                        # Añadir las preguntas del grupo completo, si aplica
+                        if identificador_grupo:
+                            preguntas_del_grupo = list(Pregunta.objects.filter(identificador_de_grupo=identificador_grupo).order_by('orden').values_list('id', flat=True))
+                            if len(preguntas_ids_seleccionadas) + len(preguntas_del_grupo) <= total_preguntas_requeridas:
+                                preguntas_ids_seleccionadas.update(preguntas_del_grupo)
+                                preguntas_seleccionadas_modulo += len(preguntas_del_grupo)
+                        else:
+                            # Añadir la pregunta individual
+                            preguntas_ids_seleccionadas.add(pregunta_id)
+                            preguntas_seleccionadas_modulo += 1
+
+                # Guardar los IDs de las preguntas seleccionadas en el examen
+                if preguntas_ids_seleccionadas:
+                    examen.preguntas.set(preguntas_ids_seleccionadas)
                 else:
-                    # Añadir la pregunta individual
-                    preguntas_ids_seleccionadas.add(pregunta_id)
-                    preguntas_seleccionadas_modulo += 1
+                    messages.error(self.request, 'Insuficientes preguntas para este examen. El examen se ha guardado, pero no tiene preguntas asignadas.')
 
-        # Guardar los IDs de las preguntas seleccionadas en el examen
-        if preguntas_ids_seleccionadas:
-            examen.preguntas.set(preguntas_ids_seleccionadas)
-        else:
-            messages.error(self.request, 'Insuficientes preguntas para este examen. El examen se ha guardado, pero no tiene suficientes preguntas.')
+                messages.success(self.request, f'Se han asignado {len(preguntas_ids_seleccionadas)} preguntas al examen.')
 
-        messages.success(self.request, f'Se han asignado {len(preguntas_ids_seleccionadas)} preguntas al examen.')
+        except Exception as e:
+            messages.error(self.request, f'Hubo un error al asignar preguntas: {str(e)}')
+            return self.form_invalid(form)
+
         return response
 
     def form_invalid(self, form):
@@ -291,7 +300,6 @@ class ListaPreguntas(ListView):
     def get_queryset(self):
         # Obtener todas las preguntas con sus respuestas relacionadas
         return Pregunta.objects.prefetch_related('respuestas').order_by('id')
-
 
 
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
@@ -592,3 +600,164 @@ class TipoExamenDeleteView(DeleteView):
     success_url = reverse_lazy('admin_panel:listar_tipo_examen')  # Redirige a la lista de exámenes después de eliminar
 
 
+#-----------------------------------------------
+#         RESULTADOS
+#---------------------------------------------
+class ResultadosAdministrador(View):
+    def get(self, request, examen_id):
+        examen = get_object_or_404(Examen, pk=examen_id)
+        # Aquí puedes obtener los resultados asociados al examen si es necesario
+        return render(request, 'admin_panel/resultados_administrador.html', {'examen': examen})
+    
+#-----------------------------------------------
+#    INFORMES
+#----------------------------------------------
+
+def generar_informe_examen(request):
+    # Obtener todos los exámenes
+    examenes = Examen.objects.prefetch_related(
+        Prefetch('preguntas', queryset=Pregunta.objects.all())
+    )
+
+    # Preparar una lista para almacenar datos del informe
+    informe_data = []
+    usuarios = []  # Lista para almacenar nombres de usuarios
+
+    # Iterar sobre los exámenes
+    for examen in examenes:
+        inscripciones = InscripcionExamen.objects.filter(examen=examen)
+
+        # Inicializar el diccionario para cada pregunta en el examen
+        for pregunta in examen.preguntas.all():
+            respuesta_correcta = pregunta.respuestas.filter(es_correcta=True).first()
+            correcta_letra = respuesta_correcta.letra if respuesta_correcta else None
+
+            # Crear la fila base para cada pregunta
+            fila_base = {
+                'Modulo': pregunta.modulo.nombre,
+                'Pregunta': pregunta.id,
+                'Respuesta Correcta': correcta_letra,
+                'Aciertos': 0,
+                'Errores': 0,
+                'Nulas': 0,
+            }
+
+            # Procesar cada inscripción
+            for inscripcion in inscripciones:
+                try:
+                    user_exam = UserExam.objects.get(usuario=inscripcion.usuario, examen=examen)
+                    respuestas_usuario = user_exam.respuestas  # Obtener las respuestas del usuario
+
+                    # Obtener la respuesta del usuario para la pregunta actual
+                    respuesta_id = respuestas_usuario.get(str(pregunta.id), None)
+
+                    # Obtener la letra correspondiente a la respuesta ID
+                    letra_respuesta = None
+                    if respuesta_id is not None:
+                        respuesta = Respuesta.objects.get(id=respuesta_id)  # Obtén la respuesta usando el ID
+                        letra_respuesta = respuesta.letra  # Almacena la letra
+
+                    # Almacenar la respuesta del usuario en la fila
+                    fila_base[inscripcion.usuario.username] = letra_respuesta  # Almacenar la letra de la respuesta
+
+                    # Contar aciertos, errores y nulas
+                    if letra_respuesta == correcta_letra:
+                        fila_base['Aciertos'] += 1
+                    elif letra_respuesta is None:  # Si no hay respuesta dada
+                        fila_base['Nulas'] += 1
+                    else:
+                        fila_base['Errores'] += 1
+
+                    # Agregar el usuario a la lista si no está ya
+                    if inscripcion.usuario.username not in usuarios:
+                        usuarios.append(inscripcion.usuario.username)
+
+                except UserExam.DoesNotExist:
+                    continue  # Si no existe, simplemente continúa con el siguiente
+                except Respuesta.DoesNotExist:
+                    # Manejo en caso de que el ID de respuesta no exista
+                    fila_base[inscripcion.usuario.username] = None  # Marca como nulo si no se encuentra
+
+            # Añadir la fila base a los datos del informe
+            informe_data.append(fila_base)
+
+    # Crear un DataFrame para los datos del informe
+    df_informe = pd.DataFrame(informe_data)
+
+    # Crear un nuevo archivo Excel para guardar el informe
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Informe de Respuestas"
+
+    # Escribir encabezados
+    headers = ['Modulo', 'Pregunta', 'Respuesta Correcta'] + usuarios + ['Aciertos', 'Errores', 'Nulas']
+    ws.append(headers)
+
+    # Escribir los datos
+    for index, row in df_informe.iterrows():
+        # Convertir respuestas None a espacios en blanco para el Excel
+        row = [cell if cell is not None else '' for cell in row]
+        ws.append(row)
+
+    # Guardar el archivo
+    output_file_path = 'informe_respuestas.xlsx'  # Ajusta la ruta según tu estructura
+    wb.save(output_file_path)
+
+    # Devolver el archivo como descarga
+    with open(output_file_path, 'rb') as f:
+        response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{output_file_path}"'
+        return response
+
+
+def certificado(request, user_exam_id):
+    # Obtener el UserExam específico
+    user_exam = get_object_or_404(UserExam, id=user_exam_id)
+
+    # Obtener el usuario asociado al UserExam
+    usuario = user_exam.usuario
+
+    # Obtener información relevante del examen
+    tipo_examen = user_exam.examen.tipo_examen.nombre
+    fecha = user_exam.examen.fecha.strftime("%d/%m/%Y")  # Acceder a la fecha del examen
+    nota = user_exam.nota  # Usa la nota calculada en el modelo
+    aprobado = user_exam.estado  # Usa el estado ya existente
+
+    # Crear el PDF (código para generar el certificado)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="certificado_{usuario.username}.pdf"'
+
+    # Configuración del documento PDF
+    doc = SimpleDocTemplate(response, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+
+    # Título del certificado
+    title = Paragraph("Certificado de Examen", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 0.5 * inch))
+
+    # Información del usuario
+    user_info = [
+        f"Nombre: {usuario.first_name} {usuario.last_name}",
+        f"Cédula: {usuario.cedula}",
+        f"Tipo de Examen: {tipo_examen}",
+        f"Fecha: {fecha}",
+        f"Resultado: {aprobado}",
+        f"Nota: {nota}"
+    ]
+
+    for info in user_info:
+        p = Paragraph(info, styles['Normal'])
+        story.append(p)
+        story.append(Spacer(1, 0.2 * inch))
+
+    # Agregar una línea al final
+    story.append(Spacer(1, 0.5 * inch))
+    story.append(Paragraph("______________________________", styles['Normal']))
+    story.append(Paragraph("Firma del Administrador", styles['Normal']))
+
+    # Construir el PDF
+    doc.build(story)
+
+    return response

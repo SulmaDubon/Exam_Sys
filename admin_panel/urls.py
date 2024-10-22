@@ -9,7 +9,10 @@ from .views import (
     AccionesExamenesView,
     TipoExamenListView, CrearTipoExamenView, EditarTipoExamenView, TipoExamenDeleteView,
     get_modulos,
-    SubirPreguntasView, ActualizarPreguntasView
+    SubirPreguntasView, ActualizarPreguntasView,
+    ResultadosAdministrador,
+    generar_informe_examen,
+    certificado,
 )
 
 app_name = 'admin_panel'
@@ -38,11 +41,16 @@ urlpatterns = [
     path('preguntas/actualizar/', ActualizarPreguntasView.as_view(), name='actualizar_preguntas'),
 
     # Tipo de Examenes
-    path('tipo_examen/', TipoExamenListView.as_view(), name='lista_tipo_examen'),  # Corrigido nombre de la ruta
+    path('tipo_examen/', TipoExamenListView.as_view(), name='lista_tipo_examen'),  
     path('tipo_examen/crear/', CrearTipoExamenView.as_view(), name='crear_tipo_examen'),
     path('tipo_examen/editar/<int:pk>/', EditarTipoExamenView.as_view(), name='editar_tipo_examen'),
-    path('tipo_examen/eliminar/<int:pk>/', TipoExamenDeleteView.as_view(), name='eliminar_tipo_examen'),  # Corregido "ath" a "path"
+    path('tipo_examen/eliminar/<int:pk>/', TipoExamenDeleteView.as_view(), name='eliminar_tipo_examen'),
 
     # Ruta para obtener módulos por tipo de examen
     path('get-modulos/<int:tipo_examen_id>/', get_modulos, name='get_modulos'),
+
+    # Resultados administrador
+    path('examenes/resultados/<int:examen_id>/', ResultadosAdministrador.as_view(), name='resultados_administrador'),  
+    path('generar-informe-examen/', generar_informe_examen, name='generar_informe_examen'),  # Ruta para generar informe de examen
+    path('certificado/<int:user_exam_id>/', certificado, name='certificado'),  # Ruta para el certificado
 ]

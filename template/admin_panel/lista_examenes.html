@@ -30,6 +30,7 @@
         <a href="{% url 'admin_panel:crear_examen' %}" class="btn btn-primary">Agendar Nuevo Examen</a>
         <a href="{% url 'admin_panel:lista_preguntas' %}" class="btn btn-primary">Preguntas</a>
         <a href="{% url 'admin_panel:lista_tipo_examen' %}" class="btn btn-primary">Clase de Examen</a>
+        
     </div>
 
     <table>
@@ -61,7 +62,7 @@
                 <td>
                     <a href="{% url 'admin_panel:editar_examen' examen.pk %}">Editar</a>
                     <a href="{% url 'admin_panel:eliminar_examen' examen.pk %}">Eliminar</a>
-                    <a href="{% url 'admin_panel:usuarios_inscritos' examen.pk %}">Usuarios Inscritos</a>
+                    <a href="{% url 'admin_panel:resultados_administrador' examen.pk %}">Resultados</a>
                 </td>
             </tr>
             {% endfor %}

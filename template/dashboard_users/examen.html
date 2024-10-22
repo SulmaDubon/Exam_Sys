@@ -107,7 +107,7 @@
             <h3>Módulo: {{ modulo_actual }}</h3>
         </div>
 
-        <form id="formularioExamen" method="post" action="{% url 'dashboard_users:generar_examen' user_exam.examen.id pagina_actual.number %}">
+        <form id="formularioExamen" method="post" action="{% url 'dashboard_users:generar_examen_paginado' user_exam.examen.id pagina_actual.number %}">
             {% csrf_token %}
             {% for pregunta in pagina_actual.object_list %}
                 <div class="question">
@@ -116,10 +116,10 @@
                         {% for respuesta in pregunta.respuestas.all %}
                             <div class="answer">
                                 <input type="radio" 
-       name="pregunta_{{ pregunta.id }}" 
-       id="respuesta_{{ respuesta.id }}" 
-       value="{{ respuesta.id }}"
-       {% if respuestas_seleccionadas|get_item:pregunta.id == respuesta.id %}checked{% endif %}>
+                                       name="pregunta_{{ pregunta.id }}" 
+                                       id="respuesta_{{ respuesta.id }}" 
+                                       value="{{ respuesta.id }}"
+                                       {% if respuestas_seleccionadas|get_item:pregunta.id == respuesta.id %}checked{% endif %}>
                                 <label for="respuesta_{{ respuesta.id }}">{{ respuesta.letra }}. {{ respuesta.texto }}</label>
                             </div>
                         {% endfor %}
@@ -142,3 +142,4 @@
     </div>
 </body>
 </html>
+

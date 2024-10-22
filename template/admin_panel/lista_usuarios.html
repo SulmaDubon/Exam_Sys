@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <title>Gestionar Usuarios</title>
     <style>
@@ -45,7 +45,6 @@
             background-color: #007bff;
             color: #fff;
             border-radius: 5px;
-            text-align: center;
         }
         .button:hover {
             background-color: #0056b3;
@@ -73,8 +72,15 @@
                 <td>{{ usuario.username }}</td>
                 <td>{{ usuario.email }}</td>
                 <td>
-                    <a href="{% url 'admin_panel:editar_usuario' usuario.id %}">Editar</a>
-                    <a href="{% url 'admin_panel:eliminar_usuario' usuario.id %}">Eliminar</a>
+                    <div class="actions">
+                        {% with user_exam=user_exams|get_item:usuario.id %}
+                            {% if user_exam %}
+                                <a href="{% url 'admin_panel:certificado' user_exam.id %}">Ver Certificado</a>
+                            {% else %}
+                                <span>No disponible</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
                 </td>
             </tr>
             {% endfor %}

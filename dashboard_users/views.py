@@ -90,6 +90,7 @@ def sala_espera_examen(request, examen_id):
 #----------------------------------------
 #   EXAMEN
 #-----------------------------------------
+
 class GenerarExamenView(View):
     template_name = 'dashboard_users/examen.html'
     http_method_names = ['get', 'post']
@@ -101,7 +102,7 @@ class GenerarExamenView(View):
         # Verificar si el examen ya fue finalizado
         if user_exam.finalizado:
             messages.info(request, 'Este examen ya ha sido completado.')
-            return redirect('dashboard_users:resultados')
+            return redirect('dashboard_users:dashboard')
 
         # Obtener las preguntas del examen y la página actual
         preguntas = user_exam.preguntas.all().order_by('id')
@@ -131,7 +132,7 @@ class GenerarExamenView(View):
         # Verificar si el examen ya fue finalizado
         if user_exam.finalizado:
             messages.error(request, 'Este examen ya ha sido completado.')
-            return redirect('dashboard_users:resultados')
+            return redirect('dashboard_users:dashboard')
 
         # Obtener la página actual del examen
         preguntas = user_exam.preguntas.all().order_by('id')
@@ -173,10 +174,11 @@ class GenerarExamenView(View):
 
         # Verificar si el usuario presionó el botón de "finalizar"
         if 'finalizar' in request.POST:
-            user_exam.examen_finalizado()
-            user_exam.calcular_nota()
-            messages.success(request, 'Has completado el examen.')
-            return redirect('dashboard_users:resultados')
+            user_exam.finalizado = True  # Cambia esto para establecer el examen como finalizado
+            user_exam.calcular_nota()  # Asegúrate de que esto calcule y asigne la nota correctamente
+            user_exam.save()  # Guarda los cambios en el modelo
+            messages.success(request, 'Has completado el examen.')  # Mensaje de éxito
+            return redirect('dashboard_users:dashboard')  # Redirigir al dashboard
 
         # Redirigir a la página actual del examen si algo sale mal
         return redirect('dashboard_users:generar_examen', examen_id=examen_id, page=page)
@@ -271,14 +273,3 @@ class InscripcionExamenView(LoginRequiredMixin, TemplateView):
             return self.render_to_response(self.get_context_data(form=form))
 
 
-#------------------------------
-#   Resultados
-#------------------------------
-
-class ResultadosExamen(LoginRequiredMixin, TemplateView):
-    template_name = 'dashboard_users/resultados.html'
-
-
-#----------------------------------------
-#    Funcion para Seleccionar preguntas
-#---------------------------------------

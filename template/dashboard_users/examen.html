@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -95,43 +96,30 @@
 </head>
 <body>
     <div class="container">
-        <h1>Examen: {{ examen.nombre }}</h1>
-        <h2>Usuario: {{ usuario.first_name }} {{ usuario.last_name }}</h2>
-        <p>Cédula: {{ usuario.cedula }}</p>
-        <p>Correo electrónico: {{ usuario.email }}</p>
+        <h1>Examen: {{ nombre_examen }}</h1>
+        <h2>Usuario: {{ nombre_usuario }}</h2>
+        <p>Cédula: {{ cedula }}</p>
+        <p>Correo electrónico: {{ correo }}</p>
         
         <div id="temporizador">Tiempo restante: --:--:--</div>
 
         <div class="module-info">
-            <h3>Módulo: {{ modulo_actual.nombre }}</h3>
+            <h3>Módulo: {{ modulo_actual }}</h3>
         </div>
 
         <form id="formularioExamen" method="post" action="{% url 'dashboard_users:generar_examen' user_exam.examen.id pagina_actual.number %}">
             {% csrf_token %}
-            {% for pregunta in pagina_actual %}
+            {% for pregunta in pagina_actual.object_list %}
                 <div class="question">
                     <p><strong>{{ forloop.counter }}. {{ pregunta.texto }}</strong></p>
-                    {% if pregunta.preguntas_relacionadas.exists %}
-                        <div class="sub-questions">
-                            {% for sub_pregunta in pregunta.preguntas_relacionadas.all %}
-                                <div class="sub-question">
-                                    <p><strong>{{ forloop.counter }}. {{ sub_pregunta.texto }}</strong></p>
-                                    <div class="answers">
-                                        {% for respuesta in sub_pregunta.respuestas.all %}
-                                            <div class="answer">
-                                                <input type="radio" name="pregunta_{{ sub_pregunta.id }}" id="respuesta_{{ respuesta.id }}" value="{{ respuesta.id }}">
-                                                <label for="respuesta_{{ respuesta.id }}">{{ respuesta.letra }}. {{ respuesta.texto }}</label>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
                     <div class="answers">
                         {% for respuesta in pregunta.respuestas.all %}
                             <div class="answer">
-                                <input type="radio" name="pregunta_{{ pregunta.id }}" id="respuesta_{{ respuesta.id }}" value="{{ respuesta.id }}">
+                                <input type="radio" 
+       name="pregunta_{{ pregunta.id }}" 
+       id="respuesta_{{ respuesta.id }}" 
+       value="{{ respuesta.id }}"
+       {% if respuestas_seleccionadas|get_item:pregunta.id == respuesta.id %}checked{% endif %}>
                                 <label for="respuesta_{{ respuesta.id }}">{{ respuesta.letra }}. {{ respuesta.texto }}</label>
                             </div>
                         {% endfor %}
@@ -147,9 +135,8 @@
                 {% if pagina_actual.has_next %}
                     <button type="submit" formaction="{% url 'dashboard_users:generar_examen' user_exam.examen.id pagina_actual.next_page_number %}">Siguiente</button>
                 {% endif %}
-                {% if not pagina_actual.has_next and not pagina_actual.has_previous %}
-                    <button type="submit" name="finalizar">Finalizar Examen</button>
-                {% endif %}
+                
+                <button type="submit" name="finalizar">Finalizar Examen</button>
             </div>
         </form>
     </div>

@@ -171,66 +171,51 @@ class CrearExamen(CreateView):
         examen = self.object
 
         # Seleccionar preguntas al azar respetando los módulos
-        preguntas_seleccionadas = []
+        preguntas_ids_seleccionadas = set()  # Conjunto para almacenar los IDs de las preguntas seleccionadas
+
         for modulo in examen.tipo_examen.modulos.all():
-            preguntas_simples = list(Pregunta.objects.filter(modulo=modulo, enunciado__isnull=True, preguntas_relacionadas__isnull=True))
-            enunciados = list(Pregunta.objects.filter(modulo=modulo, enunciado__isnull=True, preguntas_relacionadas__isnull=False).distinct())
+            # Obtener todas las preguntas del módulo y barajarlas
+            todas_las_preguntas = list(Pregunta.objects.filter(modulo=modulo).values_list('id', 'identificador_de_grupo', 'orden'))
+            random.shuffle(todas_las_preguntas)
 
+            # Cantidad de preguntas requeridas por el módulo
             total_preguntas_requeridas = modulo.cantidad_preguntas
-            cantidad_anidadas_max = len(enunciados)
-            cantidad_simples_max = len(preguntas_simples)
+            total_preguntas_disponibles = len(todas_las_preguntas)
 
-            # Intentar distribuir las preguntas de forma balanceada entre simples y anidadas
-            cantidad_anidadas = min(cantidad_anidadas_max, total_preguntas_requeridas // 2)
-            cantidad_simples = min(cantidad_simples_max, total_preguntas_requeridas - cantidad_anidadas)
+            # Ajustar la cantidad de preguntas requeridas si no hay suficientes preguntas disponibles
+            if total_preguntas_disponibles < total_preguntas_requeridas:
+                total_preguntas_requeridas = total_preguntas_disponibles
 
-            # Si no hay suficientes preguntas simples, ajustar con preguntas anidadas
-            if cantidad_simples < total_preguntas_requeridas // 2:
-                cantidad_anidadas = min(cantidad_anidadas_max, total_preguntas_requeridas - cantidad_simples)
+            # Iterar sobre las preguntas barajadas hasta alcanzar la cantidad requerida
+            preguntas_seleccionadas_modulo = 0
+            for pregunta_id, identificador_grupo, _ in todas_las_preguntas:
+                if preguntas_seleccionadas_modulo >= total_preguntas_requeridas:
+                    break
 
-            # Si no hay suficientes preguntas anidadas, ajustar con preguntas simples
-            if cantidad_anidadas < total_preguntas_requeridas // 2:
-                cantidad_simples = min(cantidad_simples_max, total_preguntas_requeridas - cantidad_anidadas)
+                # Añadir las preguntas del grupo completo, si aplica
+                if identificador_grupo:
+                    preguntas_del_grupo = list(Pregunta.objects.filter(identificador_de_grupo=identificador_grupo).order_by('orden').values_list('id', flat=True))
+                    # Verificar si el grupo completo cabe dentro del límite de preguntas requeridas
+                    if len(preguntas_ids_seleccionadas) + len(preguntas_del_grupo) <= total_preguntas_requeridas:
+                        preguntas_ids_seleccionadas.update(preguntas_del_grupo)
+                        preguntas_seleccionadas_modulo += len(preguntas_del_grupo)
+                else:
+                    # Añadir la pregunta individual
+                    preguntas_ids_seleccionadas.add(pregunta_id)
+                    preguntas_seleccionadas_modulo += 1
 
-            # Seleccionar preguntas simples
-            if cantidad_simples > 0 and cantidad_simples_max > 0:
-                preguntas_simples_seleccionadas = random.sample(preguntas_simples, cantidad_simples)
-                preguntas_seleccionadas.extend(preguntas_simples_seleccionadas)
-
-            # Seleccionar preguntas anidadas, asegurando que se incluyan tanto los enunciados como las preguntas relacionadas
-            if cantidad_anidadas > 0 and cantidad_anidadas_max > 0:
-                enunciados_seleccionados = random.sample(enunciados, cantidad_anidadas)
-                for enunciado in enunciados_seleccionados:
-                    if enunciado not in preguntas_seleccionadas:
-                        preguntas_seleccionadas.append(enunciado)
-                        preguntas_relacionadas = list(enunciado.preguntas_relacionadas.all())
-                        preguntas_seleccionadas.extend(preguntas_relacionadas[:3])  # Limitar a 3 preguntas relacionadas
-
-        # Asegurar que el número de preguntas seleccionadas no exceda el total requerido por el módulo
-        preguntas_seleccionadas_por_modulo = {}
-        for pregunta in preguntas_seleccionadas:
-            modulo = pregunta.modulo
-            if modulo not in preguntas_seleccionadas_por_modulo:
-                preguntas_seleccionadas_por_modulo[modulo] = []
-            preguntas_seleccionadas_por_modulo[modulo].append(pregunta)
-
-        preguntas_finales = []
-        for modulo, preguntas in preguntas_seleccionadas_por_modulo.items():
-            preguntas_finales.extend(preguntas[:modulo.cantidad_preguntas])
-
-        # Guardar las preguntas seleccionadas en el examen
-        if preguntas_finales:
-            examen.preguntas.set(preguntas_finales)
+        # Guardar los IDs de las preguntas seleccionadas en el examen
+        if preguntas_ids_seleccionadas:
+            examen.preguntas.set(preguntas_ids_seleccionadas)
         else:
             messages.error(self.request, 'Insuficientes preguntas para este examen. El examen se ha guardado, pero no tiene suficientes preguntas.')
 
-        messages.success(self.request, f'Se han asignado {len(preguntas_finales)} preguntas al examen.')
+        messages.success(self.request, f'Se han asignado {len(preguntas_ids_seleccionadas)} preguntas al examen.')
         return response
 
     def form_invalid(self, form):
         messages.error(self.request, 'Hubo un error al crear el examen. Por favor, revisa los datos ingresados.')
         return super().form_invalid(form)
-
 
 # Vista para editar un examen existente
 @method_decorator([login_required, user_passes_test(es_admin)], name='dispatch')
